@@ -14,7 +14,7 @@ description: >
   "run flow tests for connector-usecase" — Bob will read
   tests/flow-test.md and execute all 14 scenarios as dry-runs.
 metadata:
-  argument-hint: "product=\"Dynatrace\" industry_focus=\"BFSI\""
+  argument-hint: "product=\"Salesforce\" industry_focus=\"BFSI\""
 ---
 
 # Use Case Engine
@@ -26,10 +26,18 @@ All output HTML must be **structurally and visually identical** to `templates/us
 All layout and content rules are defined in `output-template.md`.
 Both files are in the same directory as this SKILL.md.
 
-`connector-catalog.md` (also in this directory) is the companion connector reference **only when
-`product_name` resolves to IBM App Connect / App Connect Enterprise / ACE**. For every other
-product, companion connectors come exclusively from research — `integration_ecosystem` in
-`landscape_profile` and the connector/adapter list discovered in Steps C2a or C2b.
+After Step 0 resolves `product_name`, Bob derives a `product_slug`
+(lower-case, hyphens, no punctuation — e.g. `"IBM App Connect Enterprise"` → `"ibm-app-connect-enterprise"`)
+and checks whether a file named `{product_slug}-catalog.md` exists in this skill directory using `glob`.
+
+- **If the file exists** → read it once with `read_file` and store its content as `companion_reference`.
+  Use it throughout as the companion connector source and substitution reference.
+- **If no such file exists** → `companion_reference` is `null`.
+  All companion connectors come from `integration_ecosystem` in `landscape_profile`
+  and the connector/adapter list discovered in Steps C2a or C2b.
+
+This mechanism requires **zero product-name conditionals** anywhere in this skill.
+It works for any product that has a pre-built reference file and equally for any product that does not.
 
 ---
 
@@ -46,6 +54,18 @@ Store as `product_name`.
 > "Do you want to focus on any specific industries? (e.g. BFSI, Healthcare, Retail — leave blank for all)"
 
 Store as `industry_focus` (default: all industries).
+
+**Immediately after storing `product_name`, before any research:**
+
+1. Derive `product_slug` by converting `product_name` to lower-case, replacing spaces and punctuation with hyphens, and collapsing multiple hyphens.
+   Examples: `"IBM App Connect Enterprise"` → `"ibm-app-connect-enterprise"`, `"Salesforce"` → `"salesforce"`, `"SAP S/4HANA"` → `"sap-s-4hana"`.
+
+2. Run `glob(".bob/skills/connector-usecase/{product_slug}-catalog.md")`.
+   - If the file is found → `read_file` it immediately and store its content as `companion_reference`.
+   - If not found, try the first two segments of the slug (e.g. `"ibm-app-connect"` from `"ibm-app-connect-enterprise"`) and run glob again.
+   - If still not found → set `companion_reference = null`.
+
+3. Log in memory: `{ product_slug, companion_reference_file: "{slug}-catalog.md" | null }`.
 
 Do not ask for quarter, connectors, track, or any other input at this stage.
 Confirm back in one line: `"Got it — researching {product_name}. Running product intelligence and competitive landscape analysis..."`
@@ -134,11 +154,11 @@ Store selection as `generation_mode`. Branch to the appropriate path.
 # ══════════════════════════════════════════
 
 > **Standing instruction for the entire Connector Path:**
-> **If `product_name` is IBM App Connect / ACE:** read `connector-catalog.md` once with `read_file`
-> at the start of this path — use it as the companion connector source and substitution reference.
-> **For all other products:** companion connectors come from `integration_ecosystem` in
-> `landscape_profile` and the catalog/adapter list discovered in C2a or C2b. Do not consult
-> `connector-catalog.md`. No Track A/B/D sections. No quarter anywhere in output.
+> `companion_reference` was resolved in Step 0 (runtime file discovery).
+> If `companion_reference` is not null, use it as the companion connector source and substitution reference.
+> If `companion_reference` is null, use `integration_ecosystem` from `landscape_profile`
+> and the catalog/adapter list discovered in C2a or C2b.
+> No Track A/B/D sections. No quarter anywhere in output.
 
 ## Step C1 — Catalog Check
 
@@ -146,8 +166,8 @@ Use `ask_followup_question`:
 
 > "Does {product_name} have a public connector catalog or integration listing page
 > (a browsable directory of connectors it supports natively)?
-> Examples of products that do: IBM App Connect, MuleSoft, Boomi, Workato, Zapier.
-> Examples that do not: IBM Sterling, mainframe middleware, legacy ETL tools."
+> Examples of products that do: iPaaS platforms like workflow automation tools, integration hubs, and marketplace-driven integration platforms.
+> Examples that do not: protocol-based middleware, legacy ETL tools, or adapter-framework products."
 
 - **Option YES:** `"Yes — it has a connector catalog or marketplace page"`
 - **Option NO:** `"No — it uses adapters, nodes, or protocol-based integration without a formal catalog"`
@@ -189,9 +209,11 @@ Compare `catalog_connectors[]` against competitor iPaaS catalogs to find gaps.
 
 **Run these searches in parallel:**
 1. `"{product_name} missing connectors user requests community"`
-2. `"MuleSoft {product_name} connector list"`
-3. `"Boomi {product_name} connector list"`
-4. `"Workato {product_name} connector list"`
+
+For each entry in `competitor_ipaas_connectors` from `landscape_profile` (up to 4 competitors), run:
+2. `"{competitor_name} {product_name} connector list"`
+
+(Do not hardcode competitor names. Use what was discovered in Step 2.)
 
 **Produce three lists:**
 
@@ -199,7 +221,7 @@ Compare `catalog_connectors[]` against competitor iPaaS catalogs to find gaps.
 For each connector in `catalog_connectors[]`, identify the top integration use case it enables based on `landscape_profile`.
 
 **List 2 — Gaps (present in competitor catalogs, absent here):**
-Connectors that MuleSoft / Boomi / Workato have for this product's ecosystem that `catalog_connectors[]` does not include.
+Connectors that `competitor_ipaas_connectors` entries have for this product's ecosystem that `catalog_connectors[]` does not include.
 For each gap, record: what use case is unaddressed, which competitor has it, why it matters.
 
 **List 3 — Use cases unsolved today:**
@@ -334,10 +356,9 @@ Proceed to **Step Final — Quality, Commit, Summary**.
 # ══════════════════════════════════════════
 
 > **Standing instruction for the entire Product Path:**
-> **If `product_name` is IBM App Connect / ACE:** read `connector-catalog.md` once with `read_file`
-> at the start of this path — use it as the Lens 3 companion connector reference.
-> **For all other products:** Lens 3 integration flows use `integration_ecosystem` from
-> `landscape_profile` as the companion source. Do not consult `connector-catalog.md`.
+> `companion_reference` was resolved in Step 0 (runtime file discovery).
+> If `companion_reference` is not null, use it as the Lens 3 companion connector reference.
+> If `companion_reference` is null, use `integration_ecosystem` from `landscape_profile` for Lens 3 flows.
 
 ## Step P1 — Three-Lens Discovery
 
@@ -363,10 +384,9 @@ Extract: new directions competitors are heading, trends unaddressed by the produ
 
 **Lens 3 — INTEGRATION-ENABLED: What becomes possible by connecting this product to other systems?**
 
-Using `integration_ecosystem` from `landscape_profile` as the companion connector source:
+Using `companion_reference` if not null, otherwise `integration_ecosystem` from `landscape_profile`:
 - Reason about what automation becomes possible when this product is connected to the systems its users already use
 - Identify data flows that would create business value not achievable without integration
-- If `product_name` is IBM App Connect / ACE, cross-reference with `connector-catalog.md` (managed connectors list) instead
 
 Search:
 - `mcp__tavily__tavily_search`: `"{product_name} integration workflow automation use case enterprise"` — `search_depth: "advanced"`
@@ -541,6 +561,14 @@ Do not ask any further questions.
 | Catalog page found but not extractable | Record connectors manually from search snippets; note "catalog partially extracted" |
 | Fewer than 3 sources return results in discovery phase (NO path) | Inform user, present what was found, proceed with lower-confidence picture — all items marked ⚠️ Inferred |
 | User confirms zero candidates in product path | Ask user to describe 2–3 use cases they have in mind; use those as seeds |
-| Companion connector unavailable (App Connect product) | Look up substitute in `connector-catalog.md`, use it in flow, note with `(substitute: {original})` |
-| Companion connector unavailable (any other product) | Use nearest equivalent from `integration_ecosystem` or `landscape_profile`, note with `(substitute: {original})` |
+| Companion connector unavailable and `companion_reference` is not null | Look up substitute in `companion_reference`, use it in flow, note with `(substitute: {original})` |
+| Companion connector unavailable and `companion_reference` is null | Use nearest equivalent from `integration_ecosystem` or `landscape_profile`, note with `(substitute: {original})` |
 | More than 15 connectors/adapters discovered | Present top 15 by relevance; ask user to confirm or narrow scope before generation |
+
+
+## Supporting files in this skill directory:
+- output-template.md
+- `{product_slug}-catalog.md` (if it exists for the product — discovered at runtime via glob)
+- tests/flow-test.md
+
+Use the read_file and glob tools with paths relative to: .bob/skills/connector-usecase/

@@ -1,8 +1,14 @@
 # IBM App Connect Enterprise — Connector Catalog Reference
 
-> Source: ACE Connector Roadmap v7 (Q4 2026–Q2 2027) + Community Connector Priority Register  
-> Total community connectors tracked: 105 | Roadmap scheduled (Q4 2026–Q2 2027): 68  
-> Use this file for: framework support checks, substitution lookups, priority validation
+> **Scope:** This is the pre-built companion reference for IBM App Connect / App Connect Enterprise / ACE.
+> It is loaded automatically at Step 0 when the skill's runtime glob finds this file
+> (`ibm-app-connect-catalog.md`) matching the product slug. No product-name conditional is required.
+> For any other product that does not have a matching `{slug}-catalog.md` file in this directory,
+> companion connectors are discovered dynamically from research.
+
+> Source: App Connect Connector Roadmap (Current Cycle) + Community Connector Priority Register
+> Total community connectors tracked: 105 | Roadmap scheduled (current cycle): 68
+> Use this file for: companion connector lookups, substitution lookups, availability validation (App Connect runs only)
 
 ---
 

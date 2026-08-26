@@ -77,7 +77,7 @@ Always exactly **5 stat boxes**. Layout varies by path:
 | 2 | `#6d28d9` | Use Cases | Total use cases written |
 | 3 | `#15803d` | Existing | Count of Known/Available connectors or adapters |
 | 4 | `#92400e` | Gaps Identified | Count of Gap items |
-| 5 | `#1f2328` | Ecosystem Connectors | Total connectors discovered in `integration_ecosystem` (or `151` for IBM App Connect / ACE) |
+| 5 | `#1f2328` | Ecosystem Connectors | Total connectors in `companion_reference` (if loaded) or in `integration_ecosystem` discovered via research |
 
 **Product path:**
 
@@ -87,7 +87,7 @@ Always exactly **5 stat boxes**. Layout varies by path:
 | 2 | `#6d28d9` | Gaps | Count of Lens 1 use cases |
 | 3 | `#15803d` | Opportunities | Count of Lens 2 use cases |
 | 4 | `#92400e` | Integration-Enabled | Count of Lens 3 use cases |
-| 5 | `#1f2328` | Ecosystem Connectors | Total connectors discovered in `integration_ecosystem` (or `151` for IBM App Connect / ACE) |
+| 5 | `#1f2328` | Ecosystem Connectors | Total connectors in `companion_reference` (if loaded) or in `integration_ecosystem` discovered via research |
 
 ---
 
@@ -99,10 +99,10 @@ Required. Always appears directly after `.summary-bar`. Wording adapts to path:
 ```
 All companion connectors in every flow are drawn from {ProductName}'s own integration ecosystem
 ({N} connectors discovered via research). Use cases are grounded in B2B enterprise integration demand —
-validated against market research, competitive iPaaS analysis (MuleSoft, Boomi, Workato, Informatica,
-Tray.ai), and high-frequency enterprise pain points. Each connector block opens with a gap analysis box,
-followed by {N} use cases each with: integration flow, connector pills, business need, and quantified
-value box.
+validated against market research, competitive iPaaS analysis (benchmarked against the top iPaaS
+platforms discovered in Step 2), and high-frequency enterprise pain points. Each connector block opens
+with a gap analysis box, followed by {N} use cases each with: integration flow, connector pills,
+business need, and quantified value box.
 ```
 
 **Connector path (no catalog):**
@@ -351,11 +351,11 @@ Repeat **4–5 times** per connector. Each use case has exactly 4 rows + 1 value
 | `.cpill-new` | `◆` | Integration-Enabled featured item (product path Lens 3) |
 | `.cpill-pro` | `★` | Existing / Known / Opportunity featured item |
 | `.cpill-prop` | `◆` | Gap / Inferred / Missing featured item |
-| `.cpill` | *(none)* | Every companion connector from the product's integration ecosystem (or `connector-catalog.md` for IBM App Connect / ACE only) |
+| `.cpill` | *(none)* | Every companion connector — sourced from `companion_reference` if loaded, otherwise from the product's `integration_ecosystem` |
 
 **Rules:**
 - Featured item pill always appears first in the pill row
-- All companion connectors must come from the product's own integration ecosystem (discovered in Steps 1–2 and C2a/C2b). For IBM App Connect / ACE only, use `connector-catalog.md` as the companion source instead.
+- All companion connectors must come from `companion_reference` (if loaded) or from the product's own integration ecosystem discovered in Steps 1–2 and C2a/C2b
 - If a required companion is unavailable, use the nearest equivalent from the same source and note it with `(substitute: {original})`
 - Bold every system/connector name in the Flow text using `<strong>`
 - Minimum 2 connector pills per use case, maximum 7
@@ -461,7 +461,7 @@ Before finalising any generated HTML, verify:
 - [ ] `.ci-box` cites real market data, user evidence, or competitor reference where applicable
 - [ ] Every use case Flow has `<strong>` tags on every system/connector name mentioned
 - [ ] Every use case has a `.value-box` with a quantified outcome
-- [ ] All companion connectors come from the product's discovered integration ecosystem (or `connector-catalog.md` for IBM App Connect / ACE only)
+- [ ] All companion connectors come from `companion_reference` (if loaded) or from the product's discovered integration ecosystem
 - [ ] If a companion is unavailable, substitution is applied from the same source and noted in the flow
 - [ ] Status badges match the section type (Existing ★ / Missing ◆ / Available ★ / Inferred ⚠ / Gap ▲ / Opportunity ★ / Integration ◆)
 - [ ] Actions table has 2 columns only — Action + Owner, no Timeline

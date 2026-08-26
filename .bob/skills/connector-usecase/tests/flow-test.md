@@ -14,7 +14,7 @@
 dry_run: true          # No HTML output, no git commits, no real searches
 mock_search: true      # Searches return "product found with N results" stub — no real API calls
 mock_commit: true      # Git steps print the command they would run, but do not execute
-product_name_check: true  # connector-catalog.md guard is always verified
+slug_glob_check: true  # product_slug derivation and glob for {slug}-catalog.md is always verified
 ```
 
 ---
@@ -47,7 +47,7 @@ Step 3  → Mode: A (Connector) or B (Product)
 [SPECIAL CASES]
   SC-1: product not found in IBM Docs → Tavily fallback
   SC-2: product not found anywhere → ask user for description
-  SC-3: product_name = IBM App Connect / ACE → connector-catalog.md consulted
+  SC-3: product_slug glob matches a catalog file → companion_reference loaded from that file
   SC-4: C3b user says "I have corrections" → corrections accepted before proceeding
 ```
 
@@ -197,37 +197,39 @@ Step 3  → Mode: A (Connector) or B (Product)
 
 ---
 
-### T-07 — IBM App Connect (ACE) — connector-catalog.md MUST be consulted
+### T-07 — IBM App Connect (ACE) — ibm-app-connect-catalog.md MUST be loaded via slug glob
 
 **Product:** `IBM App Connect Enterprise`
 **Mode:** Connector Use Cases
-**Expected:** `connector-catalog.md` IS read at path entry
+**Expected:** `companion_reference` is loaded from `ibm-app-connect-catalog.md` at Step 0
 
 | Step | Input | Expected behaviour | Assert |
 |------|-------|--------------------|--------|
-| Step 0 | product=`IBM App Connect Enterprise` | `product_name` stored. | ✓ |
-| Step 3 | Mode=A (Connector) | Standing instruction fires: `product_name` resolves to IBM App Connect / ACE → `connector-catalog.md` read with `read_file` at path entry. | ✓ `connector-catalog.md` IS consulted. |
+| Step 0 | product=`IBM App Connect Enterprise` | `product_name` stored. `product_slug` derived = `ibm-app-connect-enterprise`. | ✓ |
+| Step 0 | Glob check | `glob(".bob/skills/connector-usecase/ibm-app-connect-enterprise-catalog.md")` → not found. Try broader slug `ibm-app-connect` → `ibm-app-connect-catalog.md` found. `companion_reference` loaded. | ✓ `companion_reference` is not null. |
+| Step 3 | Mode=A (Connector) | Connector Path standing instruction: `companion_reference` is not null → use it as companion source. No name-based conditional fires. | ✓ File-discovery mechanism, not name check. |
 | Step C1 | YES | Branches to C2a. | ✓ |
-| C2a | Catalog fetched | `catalog_connectors[]` populated from research (not solely from `connector-catalog.md` — that file is the companion/substitution reference, not the catalog source). | ✓ |
-| C4a | Generate | Companion connectors use `connector-catalog.md` as source. Summary bar box 5: `151`. Scope note mentions "connector catalog (151 connectors)". | ✓ `151` and `connector-catalog.md` appear ONLY for this product. |
-| C-Final | HTML | No "Q2 2027" or personal data in output. Track labels from `connector-catalog.md` used if applicable. | ✓ |
+| C2a | Catalog fetched | `catalog_connectors[]` populated from research (not from `companion_reference` — that is the companion/substitution reference, not the catalog source). | ✓ |
+| C4a | Generate | Companion connectors sourced from `companion_reference`. Summary bar box 5: count from `companion_reference`. Scope note mentions "pre-built reference catalog loaded". | ✓ `companion_reference` used. No product-name conditional anywhere. |
+| C-Final | HTML | No personal data, no quarter. | ✓ |
 
 **Result: PASS if all rows ✓**
 
 ---
 
-### T-08 — IBM App Connect (ACE) — Product path · connector-catalog.md as Lens 3 companion
+### T-08 — IBM App Connect — Product path · companion_reference as Lens 3 companion
 
 **Product:** `IBM App Connect`
 **Mode:** Product Use Cases
-**Expected:** `connector-catalog.md` used for Lens 3 integration flows
+**Expected:** `companion_reference` loaded from `ibm-app-connect-catalog.md` at Step 0 and used for Lens 3
 
 | Step | Input | Expected behaviour | Assert |
 |------|-------|--------------------|--------|
-| Step 3 | Mode=B (Product) | Product Path standing instruction: `product_name` is App Connect → `connector-catalog.md` read once for Lens 3. | ✓ `connector-catalog.md` consulted. |
-| P1 Lens 3 | Integration-enabled scenarios | Companion connectors in Lens 3 flows reference systems from `connector-catalog.md`, not raw `integration_ecosystem`. | ✓ Correct source for ACE. |
-| P-Final | HTML | Scope note says "connector catalog (151 connectors)" for Lens 3. Summary bar box 5 = 151. | ✓ |
-| Non-ACE check | Contrast | If same test were run for Dynatrace, box 5 ≠ 151 and scope note ≠ "connector catalog". | ✓ Confirms guard works both ways. |
+| Step 0 | product=`IBM App Connect` | `product_slug` derived = `ibm-app-connect`. Glob check finds `ibm-app-connect-catalog.md`. `companion_reference` loaded. | ✓ `companion_reference` is not null. |
+| Step 3 | Mode=B (Product) | Product Path standing instruction: `companion_reference` is not null → use it for Lens 3. No name-based conditional fires. | ✓ File-discovery mechanism. |
+| P1 Lens 3 | Integration-enabled scenarios | Companion connectors in Lens 3 flows reference systems from `companion_reference`, not raw `integration_ecosystem`. | ✓ Correct source. |
+| P-Final | HTML | Summary bar box 5 = count from `companion_reference`. Scope note says "pre-built reference catalog loaded". | ✓ Count from actual file, not hardcoded. |
+| Non-ACE check | Contrast | If same test run for Dynatrace, glob finds no `dynatrace-catalog.md` → `companion_reference` is null → `integration_ecosystem` used instead. Box 5 ≠ ACE count. | ✓ Confirms discovery works for both cases. |
 
 **Result: PASS if all rows ✓**
 
@@ -380,8 +382,8 @@ Final-4 (one mode done)        ──┬── Switch mode (A→B) ────�
 Final-4 (both modes done)      ──┬── New product ─────────────── T-06
                                   └── Done ─────────────────────── T-03, T-05
 
-connector-catalog.md guard     ──┬── IS consulted (App Connect) ─ T-07, T-08
-                                  └── NOT consulted (all others) ─ T-01–T-06, T-09–T-14
+companion_reference discovery  ──┬── File found → loaded (App Connect) ─ T-07, T-08
+                                   └── No file → null (all others) ────── T-01–T-06, T-09–T-14
 
 Search fallback                ──┬── IBM Docs sufficient ──────── T-01–T-08, T-11–T-14
                                   ├── Tavily fallback ─────────── T-09
