@@ -1,269 +1,472 @@
 ---
 name: connector-usecase
 description: >
-  Use when generating IBM App Connect connector use cases for a quarterly roadmap cycle.
-  Triggers on phrases like "generate connector use cases", "run connector-usecase",
-  "write use cases for connectors", "quarterly connector use case doc", or
-  "/connector-usecase". Accepts 1 connector or up to 30 connectors per run.
+  Use when generating use cases for any software product — either connector use cases
+  (what integrations the product supports or is missing) or product use cases
+  (gaps, opportunities, and integration-enabled scenarios).
+  Triggers on phrases like "generate use cases", "run connector-usecase",
+  "write use cases for", "connector use cases", "product use cases", or
+  "/connector-usecase". Accepts any product name. Interactively discovers
+  the product, its connector model, and the user's goal before generating output.
   Produces a fully structured HTML output file identical in layout to
   templates/usecase-template.html.
 metadata:
-  argument-hint: "quarter=\"Q3 2027\" connectors=\"Salesforce, SAP\" industry_focus=\"BFSI\""
+  argument-hint: "product=\"Dynatrace\" industry_focus=\"BFSI\""
 ---
 
-# Connector Use Case Engine
+# Use Case Engine
 
-Automates the quarterly IBM App Connect connector use case generation workflow:
-market research → framework check → priority scoring → substitution analysis → HTML output.
+Automates product use case generation through interactive product discovery:
+product intelligence → competitive landscape → mode selection → path-specific analysis → HTML output.
 
 All output HTML must be **structurally and visually identical** to `templates/usecase-template.html`.
 All layout and content rules are defined in `output-template.md`.
-All connector availability and substitution lookups use `connector-catalog.md`.
 Both files are in the same directory as this SKILL.md.
 
----
-
-## Step 0 — Parse Inputs
-
-Read the invocation arguments. If any required input is missing, ask using `ask_followup_question` before proceeding.
-
-**Required inputs:**
-- `quarter` — the target quarter, e.g. `Q3 2027`
-- `connectors` — comma-separated list of connector names, e.g. `"Salesforce, SAP Concur, Dynatrace"`
-
-**Optional inputs:**
-- `industry_focus` — comma-separated industries to prioritise in use cases, e.g. `"BFSI, Healthcare, Retail"`
-- `track` — override track assignment: `A`, `B`, or `D` (if omitted, Bob assigns based on priority)
-- `use_case_count` — number of use cases per connector (default: 4, max: 5)
-
-Confirm parsed inputs back to the user in a single summary line before starting Phase 1.
+`connector-catalog.md` (also in this directory) is the companion connector reference **only when
+`product_name` resolves to IBM App Connect / App Connect Enterprise / ACE**. For every other
+product, companion connectors come exclusively from research — `integration_ecosystem` in
+`landscape_profile` and the connector/adapter list discovered in Steps C2a or C2b.
 
 ---
 
-## Step 1 — Market & Competitive Research
+## Step 0 — Onboarding
 
-For **each connector** in the input list, use `mcp__tavily__tavily_search` to run the following searches.
-Run searches in parallel where possible to save time.
+Ask using `ask_followup_question` before doing anything else.
 
-### Search queries to run per connector (use `search_depth: "advanced"`):
+**Required — ask this:**
+> "What is the name of the product you want to generate use cases for?"
 
-1. `"{ConnectorName} enterprise integration use cases 2025 2026"`
-2. `"MuleSoft Boomi Workato {ConnectorName} connector iPaaS"`
-3. `"{ConnectorName} market share customers Fortune 500 enterprise"`
+Store as `product_name`.
 
-### Extract and record for each connector:
-- Market position: customer count, market share %, notable enterprise users
-- Top 2–3 competitor iPaaS connector statuses (MuleSoft / Boomi / Workato / Informatica / Tray.ai)
-- Top enterprise pain points this connector addresses
-- Industry verticals where demand is highest (cross-reference with `industry_focus` if provided)
+**Optional — ask this only if not already provided:**
+> "Do you want to focus on any specific industries? (e.g. BFSI, Healthcare, Retail — leave blank for all)"
 
-### Also run one market-level search per invocation:
-- `"enterprise integration trends {quarter_year} iPaaS market"`
-- `"IBM App Connect Enterprise connector roadmap {quarter_year}"`
+Store as `industry_focus` (default: all industries).
 
-Store all findings in working memory. They feed Phase 2 (framework check) and Phase 4 (use case writing).
+Do not ask for quarter, connectors, track, or any other input at this stage.
+Confirm back in one line: `"Got it — researching {product_name}. Running product intelligence and competitive landscape analysis..."`
+Then proceed immediately to Step 1 without waiting for further input.
 
 ---
 
-## Step 2 — IBM App Connect Framework Check
+## Step 1 — Product Intelligence
 
-For **each connector**, use `mcp__product-knowledge_aef3__search` to check IBM's current framework support.
+Run all searches automatically. Do not ask the user anything during this step.
 
-### Search queries per connector:
+**Search order — IBM Docs first, Tavily fallback:**
 
-1. Query: `"IBM App Connect {ConnectorName} connector"` — sources: `["ibm_docs", "cloud_docs"]`
-2. Query: `"IBM App Connect Enterprise {ConnectorName} integration flow"` — sources: `["ibm_docs", "redbooks"]`
+1. `mcp__product-knowledge_aef3__search`
+   - Query: `"{product_name}"` — sources: `["ibm_docs", "cloud_docs"]`
+   - Query: `"{product_name} enterprise integration"` — sources: `["ibm_docs", "redbooks", "cloud_docs"]`
 
-### Determine and record for each connector:
+2. If IBM product-knowledge returns fewer than 2 useful results, run Tavily:
+   - `mcp__tavily__tavily_search`: `"{product_name} product overview enterprise"` — `search_depth: "advanced"`
+   - `mcp__tavily__tavily_search`: `"{product_name} customers use cases industry verticals"` — `search_depth: "advanced"`
 
-| Check | Answer |
-|-------|--------|
-| Does ACE have a managed connector for this? | Yes / No / Community only |
-| Is it on the roadmap? | Yes (which quarter) / No / Proposed |
-| Which ACE trigger/action types are supported? | Action / Event / Both |
-| Are there documented flow patterns for this connector? | Yes / No |
+**Synthesise and store as `product_profile`:**
 
-### Cross-reference with `connector-catalog.md`:
-- Open `connector-catalog.md` using `read_file`
-- Verify priority (P1 / P2 / P3) and status (Managed / Community → Managed / Net-New / Community)
-- If the connector is **not in the catalog**, flag it as `Unknown` and note it for the user
-- If a connector is marked as unavailable/community-only, identify the best substitute from the
-  `Substitution Options` column in `connector-catalog.md`
+| Field | What to extract |
+|-------|----------------|
+| `product_category` | e.g. CRM, DevOps, ITSM, Payments, Observability, ERP, Supply Chain |
+| `product_description` | 1–2 sentence summary of what it does |
+| `product_key_users` | who uses it — developers, finance teams, operations, etc. |
+| `product_data_types` | what data it produces or consumes — events, records, metrics, transactions |
+| `product_vendor` | who makes it — IBM, Salesforce, etc. |
+| `product_market_size` | customer count, market share %, or notable enterprise users if available |
 
-Record: `{ connector, priority, status, track_assignment, substitute_if_needed }`
+Store `product_profile`. It feeds all subsequent steps.
 
 ---
 
-## Step 3 — Track Assignment & Priority Scoring
+## Step 2 — Competitive Landscape Research
 
-Assign each connector to a track based on framework check results:
+Run all searches automatically in parallel. Do not ask the user anything during this step.
 
-| Track | Condition |
-|-------|-----------|
-| **Track A** | P2, confirmed in roadmap for this quarter or adjacent quarter |
-| **Track B** | P3, confirmed in roadmap |
-| **Track D** | P2, NOT in current roadmap — propose as pull-forward |
+**Tavily searches (use `search_depth: "advanced"` for all):**
 
-Sort connectors within each track by priority score. Use this scoring:
+1. `"{product_name} competitors market 2025 2026"`
+2. `"{product_name} alternative tools enterprise comparison"`
+3. `"{product_name} MuleSoft Boomi Workato integration connector iPaaS"`
+4. `"enterprise integration trends {product_category} iPaaS market 2025 2026"`
 
-| Signal | Points |
-|--------|--------|
-| Competitor has certified connector (each) | +10 |
-| Fortune 500 / enterprise market relevance | +8 |
-| IBM has no current managed connector | +7 |
-| P2 priority in register | +6 |
-| P3 priority in register | +3 |
-| IBM joint-sell story exists | +5 |
-| India Stack / regulatory mandate | +4 |
+**Synthesise and store as `landscape_profile`:**
 
-Highest score within track = lowest connector number.
+| Field | What to extract |
+|-------|----------------|
+| `competitor_list` | top 3–5 competing products in the same category |
+| `integration_ecosystem` | systems this product typically integrates with |
+| `market_pain_points` | top 3–5 enterprise pain points the product addresses |
+| `competitor_ipaas_connectors` | which iPaaS platforms have connectors for this product and what those connectors do |
+| `industry_verticals` | which industries have highest demand for this product |
 
-Present a **track assignment summary table** to the user in chat before proceeding to Phase 4.
-Wait for confirmation or corrections before writing the HTML.
+Store `landscape_profile`. It feeds both the Connector Path and Product Path.
 
-Example format:
+---
+
+## Step 3 — Mode Selection
+
+Present findings to the user and ask what they want to generate.
+
+Show a brief summary (3–4 lines) of what was found:
 ```
-Track A (P2 Roadmap): Dynatrace [score: 36], Nutanix [score: 31]
-Track B (P3 Roadmap): SAP Concur [score: 22], Webex [score: 19]
-Track D (Proposed):   Pipedrive [score: 28]
+{product_name} is a {product_category} platform used by {product_key_users}.
+It competes with {competitor_list[0]}, {competitor_list[1]}, and {competitor_list[2]}.
+It integrates with systems like {integration_ecosystem[0..2]}.
 ```
 
----
+Then use `ask_followup_question`:
 
-## Step 4 — Use Case Generation
+> "What would you like to generate?"
 
-For each connector (in track order), generate 4–5 use cases following the rules in `output-template.md`.
+- **Option A:** `"Connector Use Cases — analyse what integrations/connectors the product supports or is missing, and generate use cases around those"`
+- **Option B:** `"Product Use Cases — explore gaps the product isn't solving, opportunities it could fulfil, and new use cases enabled by integration"`
 
-Read `output-template.md` using `read_file` before writing any use case content.
-
-### Per connector, write:
-
-**1. Competitive Intelligence block (`.ci-box`)**
-- Use market research from Phase 1
-- Must include: market position stat, why enterprises need it, ≥2 competitor statuses, IBM current gap
-- Format: `{N} / {ConnectorName} — Competitive gap: {2–4 sentences}`
-
-**2. Card header**
-- Connector name with sequential number
-- Priority badge: `.p1` / `.p2` / `.p3`
-- Type tag: `Action & Event` (default), `Action`, or `Event` based on framework check
-- Status badge: `Net-New` (blue) / `Promoted ★` (green) / `Proposed ◆` (orange)
-- Category tags: 2–3 short category labels
-
-**3. For each use case (UC1–UC4 minimum, UC5 if high-value scenario exists):**
-
-- **Title:** `UC{N} — {ConnectorName} {integration scenario verb phrase}`
-- **Flow:** 4–6 steps using `→` arrows. Bold every companion connector name with `<strong>`.
-  Use real ACE catalog connectors only (verify against `connector-catalog.md`).
-  If a needed connector is unavailable, use the documented substitute and note it inline.
-- **Connector pills:** Featured connector first (`.cpill-new ◆` or `.cpill-pro ★`),
-  then all companions as `.cpill`. Minimum 3 pills, maximum 7.
-- **Business Need:** 2–3 sentences with ≥1 quantified data point (time/cost/stat/regulation).
-  Reference the industry vertical from `industry_focus` if provided.
-- **Value box:** 1–2 sentences. Quantified outcome + IBM selling narrative.
-
-**4. Actions Required table**
-- 2–4 rows
-- Owners: `ACE PM`, `ACE Engineering`, `ACE Connector Engineering`, `IBM Partnerships`, `IBM Legal`
-- Timelines aligned to the quarter being documented
-
-### Cross-industry use case rotation:
-Across the 4–5 use cases per connector, vary the industry verticals:
-- UC1: Most universal (works across industries)
-- UC2: BFSI / Financial Services angle (if applicable)
-- UC3: DevOps / IT Operations angle (if applicable)
-- UC4: Compliance / Regulatory angle (if applicable)
-- UC5: Industry-specific from `industry_focus` (if provided)
+Store selection as `generation_mode`. Branch to the appropriate path.
 
 ---
 
-## Step 5 — Build Summary Bar Stats
+# ══════════════════════════════════════════
+# CONNECTOR PATH  (generation_mode = A)
+# ══════════════════════════════════════════
 
-Calculate:
-- **Connectors:** total count across all tracks
-- **Use Cases:** sum of all use cases written
-- **Roadmap (v{N}):** count of Track A + Track B connectors
-- **Proposed Pull-Forward:** count of Track D connectors
-- **Catalog Connectors:** always `151`
+> **Standing instruction for the entire Connector Path:**
+> **If `product_name` is IBM App Connect / ACE:** read `connector-catalog.md` once with `read_file`
+> at the start of this path — use it as the companion connector source and substitution reference.
+> **For all other products:** companion connectors come from `integration_ecosystem` in
+> `landscape_profile` and the catalog/adapter list discovered in C2a or C2b. Do not consult
+> `connector-catalog.md`. No Track A/B/D sections. No quarter anywhere in output.
 
-Determine the roadmap version number from `connector-catalog.md` header or default to `v7`.
+## Step C1 — Catalog Check
+
+Use `ask_followup_question`:
+
+> "Does {product_name} have a public connector catalog or integration listing page
+> (a browsable directory of connectors it supports natively)?
+> Examples of products that do: IBM App Connect, MuleSoft, Boomi, Workato, Zapier.
+> Examples that do not: IBM Sterling, mainframe middleware, legacy ETL tools."
+
+- **Option YES:** `"Yes — it has a connector catalog or marketplace page"`
+- **Option NO:** `"No — it uses adapters, nodes, or protocol-based integration without a formal catalog"`
+
+Branch to **Step C2a** (YES) or **Step C2b** (NO).
 
 ---
 
-## Step 6 — Assemble the HTML File
+## Step C2a — Catalog Read (YES path)
 
-Read `output-template.md` using `read_file` to verify all rules before writing.
-Read the full CSS block from `templates/usecase-template.html` using `read_file`
-and copy it verbatim into the `<style>` tag of the output file.
+Fetch the product's connector catalog directly.
 
-Assemble the complete HTML in this exact order:
-1. `<!DOCTYPE html>` shell with copied CSS
-2. `<h1>` and `.subtitle`
-3. `.summary-bar` (5 stat boxes)
-4. `.note-box` (scope note)
-5. `.toc` (omit for single-connector runs)
-6. Track sections: A → B → D, each with `.track-header`, track `.note-box`, then connector blocks
-7. Each connector block: `.ci-box` → `.connector-card` (header + use-cases + actions-section)
-8. `<hr />` between tracks
-9. `.footer` with `Made with IBM Bob`
+**Run these searches in parallel (use `search_depth: "advanced"`):**
+1. `mcp__tavily__tavily_search`: `"{product_name} connector catalog all connectors list"`
+2. `mcp__tavily__tavily_search`: `"{product_name} integration marketplace connectors directory"`
+3. `mcp__product-knowledge_aef3__search`: `"{product_name} connectors"` — sources: `["ibm_docs", "cloud_docs"]`
 
-### Output file naming convention:
+**Also run Tavily extract** on any official catalog/marketplace page found:
+- `mcp__tavily__tavily_extract` on the catalog URL to get the full connector list
+
+**Record for each connector found:**
+
+| Field | Value |
+|-------|-------|
+| `connector_name` | name of the connector |
+| `category` | e.g. CRM, Payments, DevOps, Security |
+| `status` | Native/Managed / Community / Partner / Third-party |
+| `trigger_action` | Action / Event / Both |
+
+Store as `catalog_connectors[]`.
+
+Proceed to **Step C3a**.
+
+---
+
+## Step C3a — Catalog Gap Analysis (YES path)
+
+Compare `catalog_connectors[]` against competitor iPaaS catalogs to find gaps.
+
+**Run these searches in parallel:**
+1. `"{product_name} missing connectors user requests community"`
+2. `"MuleSoft {product_name} connector list"`
+3. `"Boomi {product_name} connector list"`
+4. `"Workato {product_name} connector list"`
+
+**Produce three lists:**
+
+**List 1 — Existing connectors and what they enable:**
+For each connector in `catalog_connectors[]`, identify the top integration use case it enables based on `landscape_profile`.
+
+**List 2 — Gaps (present in competitor catalogs, absent here):**
+Connectors that MuleSoft / Boomi / Workato have for this product's ecosystem that `catalog_connectors[]` does not include.
+For each gap, record: what use case is unaddressed, which competitor has it, why it matters.
+
+**List 3 — Use cases unsolved today:**
+Based on `market_pain_points` from `landscape_profile`, which pain points have no corresponding connector in the product's own catalog (i.e. `catalog_connectors[]` discovered in Step C2a)?
+
+Proceed to **Step C4a**.
+
+---
+
+## Step C4a — Generate Connector Use Cases (YES path)
+
+For each item across List 1 and List 2 from Step C3a, generate 4–5 use cases.
+
+Apply `.ci-box` labels, status badges, and featured pills per `output-template.md` Section 7 (Connector catalog — Existing and Gaps rows).
+
+- **List 1 items:** flows show what the connector enables end-to-end
+- **List 2 items:** flows show what would become possible if this connector existed; note inline `(not yet available — competitor gap)`
+
+Proceed to **Step C-Final**.
+
+---
+
+## Step C2b — Discovery Phase (NO path)
+
+No single source of truth exists. Reconstruct the integration picture from four sources in parallel.
+
+**Source 1 — Official docs (IBM Docs + product docs):**
+- `mcp__product-knowledge_aef3__search`: `"{product_name} adapter"` — sources: `["ibm_docs", "redbooks"]`
+- `mcp__product-knowledge_aef3__search`: `"{product_name} node integration protocol"` — sources: `["ibm_docs", "cloud_docs"]`
+- `mcp__tavily__tavily_search`: `"{product_name} adapter documentation supported systems"` — `search_depth: "advanced"`
+
+**Source 2 — Release notes and changelogs:**
+- `mcp__tavily__tavily_search`: `"{product_name} release notes new adapter connector version history"` — `search_depth: "advanced"`
+
+**Source 3 — Community and partner sources:**
+- `mcp__tavily__tavily_search`: `"{product_name} adapter implementation guide community"` — `search_depth: "advanced"`
+- `mcp__tavily__tavily_search`: `"{product_name} integration partner documentation Stack Overflow"` — `search_depth: "advanced"`
+
+**Source 4 — Competitor comparison:**
+- `mcp__tavily__tavily_search`: `"{product_name} vs {competitor_list[0]} integration adapters supported"` — `search_depth: "advanced"`
+- `mcp__tavily__tavily_search`: `"{product_category} adapter support comparison enterprise"` — `search_depth: "advanced"`
+
+**Synthesise into three confidence tiers:**
+
+| Tier | Symbol | Meaning |
+|------|--------|---------|
+| Known | ✅ | Documented in official product docs or IBM Docs |
+| Inferred | ⚠️ | Found only in community, partner, or third-party docs |
+| Gap | ❌ | Present in competitor products, absent here |
+
+Proceed to **Step C3b**.
+
+---
+
+## Step C3b — User Confirmation Gate (NO path)
+
+Present the synthesised picture to the user and wait for confirmation before proceeding.
+
+Format the confirmation message as:
 ```
-output/{quarter-slug}-connector-use-cases.html
-```
-Example: `output/q3-2027-connector-use-cases.html`
+Based on research, here is what I found {product_name} supports:
 
-Use `write_file` to write the complete HTML to the `output/` directory.
+✅ Known (documented in official sources):
+- {adapter/node/protocol name} — {brief description}
+- ...
+
+⚠️ Inferred (found only in community or partner docs):
+- {adapter/node/protocol name} — {source reference}
+- ...
+
+❌ Gaps vs competitors:
+- {adapter/node/protocol name} — {competitor that has it} has this; {product_name} does not
+- ...
+
+Is this picture accurate? Anything to add or correct?
+```
+
+Use `ask_followup_question`:
+- **Option A:** `"Yes, this looks accurate — proceed"`
+- **Option B:** `"I have corrections — let me provide them"`
+
+If Option B, accept the user's corrections and update the picture before proceeding.
+
+Proceed to **Step C4b**.
 
 ---
 
-## Step 7 — Quality Verification
+## Step C4b — Gap Analysis (NO path)
 
-After writing the file, run the content quality checklist from `output-template.md` Section 14.
+Using the confirmed picture from Step C3b, produce three lists:
 
-Report results to the user in chat:
-```
-✅ Quality check passed — {N} connectors · {N} use cases · {N} tracks
-File: output/{quarter-slug}-connector-use-cases.html
-```
+**List 1 — Discovered capabilities and what they enable:**
+For each ✅ Known item, identify the top use case it enables based on `landscape_profile`.
 
-If any check fails, fix it in the file before reporting completion.
+**List 2 — Inferred capabilities (lower confidence):**
+For each ⚠️ Inferred item, identify the use case it could enable.
+All use cases from this list must be annotated: `(based on community-documented adapter support — verify with product team)`
+
+**List 3 — Gaps:**
+For each ❌ Gap item, describe: what use case is unaddressed, which competitor covers it, why it matters to enterprises.
+
+Proceed to **Step C5b**.
 
 ---
 
-## Step 8 — Git Commit
+## Step C5b — Generate Node/Connector Use Cases (NO path)
 
-After the file passes quality checks, stage and commit it to the `dev` branch:
+For each item across List 1, List 2, and List 3 from Step C4b, generate 4–5 use cases.
+
+Apply `.ci-box` labels, status badges, featured pills, and confidence annotations per `output-template.md` Sections 7 and 16 (no-catalog rows and annotation rules).
+
+- **List 1 (Known):** flows show what the adapter enables end-to-end
+- **List 2 (Inferred):** flows show what the adapter could enable; every use case must include the annotation from `output-template.md` Section 16
+- **List 3 (Gaps):** flows show what would become possible if this adapter existed; note inline `(not yet available — gap vs {CompetitorName})`
+
+Proceed to **Step C-Final**.
+
+---
+
+## Step C-Final — Connector Path HTML Assembly
+
+Read `output-template.md` using `read_file` and `templates/usecase-template.html` using `read_file`.
+Assemble the HTML file strictly following all rules in `output-template.md` (Sections 1–14, 16).
+Use the **Connector path** variants for header, subtitle, summary bar, scope note, TOC, and section wrappers.
+
+Proceed to **Step Final — Quality, Commit, Summary**.
+
+---
+
+# ══════════════════════════════════════════
+# PRODUCT PATH  (generation_mode = B)
+# ══════════════════════════════════════════
+
+> **Standing instruction for the entire Product Path:**
+> **If `product_name` is IBM App Connect / ACE:** read `connector-catalog.md` once with `read_file`
+> at the start of this path — use it as the Lens 3 companion connector reference.
+> **For all other products:** Lens 3 integration flows use `integration_ecosystem` from
+> `landscape_profile` as the companion source. Do not consult `connector-catalog.md`.
+
+## Step P1 — Three-Lens Discovery
+
+Run all three lenses automatically in parallel. Do not ask the user anything during this step.
+
+**Lens 1 — GAPS: What is the product NOT solving today?**
+
+Search for documented limitations, complaints, and unmet needs:
+- `mcp__tavily__tavily_search`: `"{product_name} limitations missing features user complaints 2025"` — `search_depth: "advanced"`
+- `mcp__tavily__tavily_search`: `"{product_name} reviews pain points G2 Gartner TrustRadius"` — `search_depth: "advanced"`
+- `mcp__tavily__tavily_search`: `"{product_name} vs {competitor_list[0]} disadvantages weaknesses"` — `search_depth: "advanced"`
+
+Extract: specific things users say the product cannot do that they wish it could.
+
+**Lens 2 — OPPORTUNITIES: What could the product do?**
+
+Search for trends, adjacent markets, and unaddressed directions:
+- `mcp__tavily__tavily_search`: `"{product_category} trends emerging use cases 2025 2026 enterprise"` — `search_depth: "advanced"`
+- `mcp__tavily__tavily_search`: `"{product_name} roadmap future vision AI automation"` — `search_depth: "advanced"`
+- `mcp__tavily__tavily_search`: `"{product_name} adjacent markets expansion opportunity"` — `search_depth: "advanced"`
+
+Extract: new directions competitors are heading, trends unaddressed by the product, adjacent market openings.
+
+**Lens 3 — INTEGRATION-ENABLED: What becomes possible by connecting this product to other systems?**
+
+Using `integration_ecosystem` from `landscape_profile` as the companion connector source:
+- Reason about what automation becomes possible when this product is connected to the systems its users already use
+- Identify data flows that would create business value not achievable without integration
+- If `product_name` is IBM App Connect / ACE, cross-reference with `connector-catalog.md` (managed connectors list) instead
+
+Search:
+- `mcp__tavily__tavily_search`: `"{product_name} integration workflow automation use case enterprise"` — `search_depth: "advanced"`
+
+---
+
+## Step P2 — Present Use Case Candidates
+
+Synthesise the three lenses into 6–10 candidate use cases. Present them clearly grouped by lens.
+
+Format:
+```
+## Use Case Candidates for {product_name}
+
+**Gaps — what the product is not solving today:**
+  UC-G1: {title} — {1-sentence rationale with a data point or user quote}
+  UC-G2: {title} — {1-sentence rationale with a data point or user quote}
+
+**Opportunities — what the product could do:**
+  UC-O1: {title} — {1-sentence rationale referencing a trend or competitor direction}
+  UC-O2: {title} — {1-sentence rationale referencing a trend or competitor direction}
+
+**Integration-enabled — new scenarios via connected systems:**
+  UC-I1: {title} — connectors involved: {list}  — {1-sentence value statement}
+  UC-I2: {title} — connectors involved: {list}  — {1-sentence value statement}
+```
+
+Use `ask_followup_question`:
+
+> "How many use cases do you want in the output, and would you like to remove any of the above candidates?"
+
+- **Option A:** `"Proceed with all candidates (4–5 recommended per section)"`
+- **Option B:** `"Use fewer — I'll specify which to keep"`
+
+If Option B, accept the user's selections before proceeding.
+
+---
+
+## Step P3 — Generate Product Use Cases
+
+For each confirmed candidate, generate a use case block per `output-template.md` rules (Sections 7–10, 15).
+
+Apply `.ci-box` labels, status badges, and featured pills per `output-template.md` Section 7 (Product path rows).
+Follow connector pill, flow, business need, and value box rules from Sections 9 and 15.
+Follow actions table rules (2 columns, Product path owners) from Section 10.
+
+---
+
+## Step P-Final — Product Path HTML Assembly
+
+Read `output-template.md` using `read_file` and `templates/usecase-template.html` using `read_file`.
+Assemble the HTML file strictly following all rules in `output-template.md` (Sections 1–15).
+Use the **Product path** variants for header, subtitle, summary bar, scope note, TOC, and section wrappers.
+
+Proceed to **Step Final — Quality, Commit, Summary**.
+
+---
+
+# ══════════════════════════════════════════
+# SHARED FINAL STEPS (both paths)
+# ══════════════════════════════════════════
+
+## Step Final-1 — Quality Verification
+
+After writing the HTML file, verify against the checklist in `output-template.md` Section 14.
+
+Report in chat:
+```
+✅ Quality check passed — {N} connectors/use cases · {N} sections
+File: output/{filename}.html
+```
+
+If any check fails, fix it in the file before reporting.
+
+---
+
+## Step Final-2 — Git Commit
 
 ```bash
-cd {repo_root}
-git add output/{quarter-slug}-connector-use-cases.html
-git commit -m "feat: {quarter} connector use cases — {connector_count} connectors, {use_case_count} use cases"
+git add output/{filename}.html
+git commit -m "feat: {product-slug} {mode} use cases — {N} items"
 git push origin dev
 ```
 
-Use `execute_command` for the git operations.
-
-Report the commit hash and a link to the file on `dev` in chat.
+Use `execute_command`. Report commit hash.
 
 ---
 
-## Step 9 — Final Summary
-
-Report to the user:
+## Step Final-3 — Final Summary
 
 ```
-## ✅ {QUARTER} Connector Use Cases Complete
+## ✅ {product_name} {Mode} Use Cases Complete
 
 | | |
 |---|---|
-| **File** | output/{quarter-slug}-connector-use-cases.html |
-| **Connectors** | {N} ({track_summary}) |
-| **Use Cases** | {N} total |
+| **File** | output/{filename}.html |
+| **Product** | {product_name} ({product_category}) |
+| **Mode** | {Connector Use Cases / Product Use Cases} |
+| **Items** | {N} total |
 | **Committed** | dev branch — {commit_hash} |
 
-**To merge to main** when the quarterly cycle is validated:
-  gh pr create --base main --head dev --title "Release: {QUARTER} connector use cases"
+To merge to main:
+  gh pr create --base main --head dev --title "{product_name} {Mode} Use Cases"
 ```
 
 ---
@@ -272,8 +475,11 @@ Report to the user:
 
 | Situation | Action |
 |-----------|--------|
-| Connector not found in `connector-catalog.md` | Flag to user, use Tavily research to infer priority, continue |
-| Tavily search returns no results | Use IBM product-knowledge MCP as fallback, note limitation |
-| Companion connector unavailable in catalog | Look up substitute in `connector-catalog.md`, use substitute in flow, note it with `(substitute: {original})` |
-| IBM product-knowledge returns no framework docs | Mark framework support as `Unknown`, write use cases conservatively |
-| More than 30 connectors requested | Warn user, suggest splitting into two runs (e.g. Track A+B in run 1, Track D in run 2) |
+| Product not found in IBM Docs or Tavily | Ask user for a 1–2 sentence description, use it as `product_description` and proceed |
+| Tavily search returns no results | Use IBM product-knowledge MCP as fallback; if both fail, note limitation and proceed with what is known |
+| Catalog page found but not extractable | Record connectors manually from search snippets; note "catalog partially extracted" |
+| Fewer than 3 sources return results in discovery phase (NO path) | Inform user, present what was found, proceed with lower-confidence picture — all items marked ⚠️ Inferred |
+| User confirms zero candidates in product path | Ask user to describe 2–3 use cases they have in mind; use those as seeds |
+| Companion connector unavailable (App Connect product) | Look up substitute in `connector-catalog.md`, use it in flow, note with `(substitute: {original})` |
+| Companion connector unavailable (any other product) | Use nearest equivalent from `integration_ecosystem` or `landscape_profile`, note with `(substitute: {original})` |
+| More than 15 connectors/adapters discovered | Present top 15 by relevance; ask user to confirm or narrow scope before generation |
