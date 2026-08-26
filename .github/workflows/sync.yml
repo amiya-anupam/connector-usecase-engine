@@ -1,0 +1,81 @@
+name: Bidirectional Sync with IBM GHE
+
+# Triggers:
+#   1. On every push to github.com (public → IBM GHE)
+#   2. On a schedule (polls IBM GHE → public)
+#   3. Manually via workflow_dispatch
+on:
+  push:
+    branches:
+      - main
+      - dev
+  schedule:
+    # Runs every 30 minutes — pulls from IBM GHE into github.com
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      direction:
+        description: 'Sync direction'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - ibm-to-public
+          - public-to-ibm
+
+jobs:
+  sync:
+    name: Sync Repositories
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure git
+        run: |
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      # ── Clone IBM GHE repo ──────────────────────────────────────────────────
+      - name: Clone IBM GHE repo
+        run: |
+          git clone \
+            "https://Amiya-Anupam1:${{ secrets.IBM_GHE_TOKEN }}@github.ibm.com/Amiya-Anupam1/connector-usecase-engine.git" \
+            ibm-repo
+          cd ibm-repo
+          git fetch --all --prune
+
+      # ── Add github.com as a remote inside the IBM clone ─────────────────────
+      - name: Add public remote
+        working-directory: ibm-repo
+        run: |
+          git remote add public \
+            "https://amiya-anupam:${{ secrets.GH_PUBLIC_TOKEN }}@github.com/amiya-anupam/connector-usecase-engine.git"
+          git fetch public --prune
+
+      # ── IBM GHE → github.com (always runs) ──────────────────────────────────
+      - name: Push IBM GHE → github.com
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' && inputs.direction != 'public-to-ibm' }}
+        working-directory: ibm-repo
+        run: |
+          for branch in main dev; do
+            echo "→ Syncing branch: $branch (IBM → public)"
+            git checkout "$branch" 2>/dev/null || git checkout -b "$branch" "origin/$branch"
+            git push public "$branch" --force-with-lease || echo "::warning::Could not push $branch to public (may have diverged)"
+          done
+          git push public --tags
+
+      # ── github.com → IBM GHE (runs on push to github.com) ───────────────────
+      - name: Push github.com → IBM GHE
+        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' && inputs.direction != 'ibm-to-public' }}
+        working-directory: ibm-repo
+        run: |
+          branch="${{ github.ref_name }}"
+          echo "→ Syncing branch: $branch (public → IBM)"
+          git fetch public "$branch"
+          git checkout "$branch" 2>/dev/null || git checkout -b "$branch" "origin/$branch"
+          git merge "public/$branch" --no-edit --allow-unrelated-histories \
+            -m "chore: sync from github.com [$branch]" || {
+              echo "::warning::Merge conflict on $branch — skipping push to IBM GHE"
+              exit 0
+          }
+          git push origin "$branch" --force-with-lease || echo "::warning::Could not push $branch to IBM GHE"
