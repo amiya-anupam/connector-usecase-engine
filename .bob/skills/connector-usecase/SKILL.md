@@ -471,6 +471,64 @@ To merge to main:
 
 ---
 
+## Step Final-4 — Continue or Close
+
+After displaying the Step Final-3 summary, use `ask_followup_question`:
+
+> "Is there anything else you'd like to generate?"
+
+Present only the options that are still available for this session:
+
+- **If the user has only run one mode for this product** (either Connector OR Product, not both), offer:
+  - **Option A:** `"Yes — generate {the other mode} for {product_name} (reuses research already done, skips straight to generation)"`
+  - **Option B:** `"Yes — run the full flow for a different product"`
+  - **Option C:** `"No — I'm done for now"`
+
+- **If the user has already run both modes for this product**, omit Option A and offer only:
+  - **Option A:** `"Yes — run the full flow for a different product"`
+  - **Option B:** `"No — I'm done for now"`
+
+---
+
+### Branch: Option A — Switch mode for the same product
+
+`product_profile` and `landscape_profile` are already in memory. Do not repeat Steps 0–3.
+
+Confirm in one line:
+```
+Switching to {other mode} for {product_name} — picking up where we left off.
+```
+
+Then jump directly to the entry point of the new path:
+- Switching **to Connector path** → go to **Step C1** (Catalog Check)
+- Switching **to Product path** → go to **Step P1** (Three-Lens Discovery)
+
+Mark the new mode as complete after its Final-3 summary. Then loop back to Step Final-4 and offer only Option B / "No" (both modes now done for this product).
+
+---
+
+### Branch: Option B — Different product
+
+Confirm in one line:
+```
+Starting fresh for a new product.
+```
+
+Then go to **Step 0** (Onboarding) and run the full flow from the beginning.
+
+---
+
+### Branch: No — Done
+
+Respond with exactly one closing line:
+```
+All done — {product_name} {mode(s) completed} use cases saved to output/. Open output/{filename}.html in a browser to review.
+```
+
+Do not ask any further questions.
+
+---
+
 ## Error Handling
 
 | Situation | Action |
