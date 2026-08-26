@@ -10,6 +10,9 @@ description: >
   the product, its connector model, and the user's goal before generating output.
   Produces a fully structured HTML output file identical in layout to
   templates/usecase-template.html.
+  To run the flow test suite, say "/test connector-usecase" or
+  "run flow tests for connector-usecase" — Bob will read
+  tests/flow-test.md and execute all 14 scenarios as dry-runs.
 metadata:
   argument-hint: "product=\"Dynatrace\" industry_focus=\"BFSI\""
 ---
