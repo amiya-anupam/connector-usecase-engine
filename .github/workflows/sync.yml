@@ -47,7 +47,7 @@ jobs:
       - name: Clone IBM GHE repo
         run: |
           git clone \
-            "https://x-token:${{ secrets.IBM_GHE_PAT }}@github.ibm.com/Amiya-Anupam1/connector-usecase-engine.git" \
+            "https://Amiya-Anupam1:${{ secrets.IBM_GHE_PAT }}@github.ibm.com/Amiya-Anupam1/connector-usecase-engine.git" \
             ibm-repo
           cd ibm-repo
           git fetch --all --prune
