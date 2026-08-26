@@ -2,7 +2,7 @@
 
 > This file defines the exact structure, CSS classes, and content rules Bob must follow
 > when generating connector use case HTML output.
-> The canonical reference file is: `templates/q2-2027-connector-use-cases.html`
+> The canonical reference file is: `templates/usecase-template.html`
 > **Every generated HTML file must be structurally identical to that reference — no exceptions.**
 
 ---
@@ -17,7 +17,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Connector Use Cases — {QUARTER} — IBM App Connect Enterprise</title>
 <style>
-  /* PASTE FULL CSS FROM templates/q2-2027-connector-use-cases.html — DO NOT MODIFY */
+  /* PASTE FULL CSS FROM templates/usecase-template.html — DO NOT MODIFY */
 </style>
 </head>
 <body>
@@ -35,7 +35,7 @@
 </html>
 ```
 
-**Rule:** Copy the CSS block verbatim from `templates/q2-2027-connector-use-cases.html`. Never rewrite, shorten, or modify it.
+**Rule:** Copy the CSS block verbatim from `templates/usecase-template.html`. Never rewrite, shorten, or modify it.
 
 ---
 
@@ -376,4 +376,4 @@ Before finalising any generated HTML, verify:
 - [ ] Status badges match (Net-New / Promoted / Proposed)
 - [ ] Actions table has 2–4 rows with correct owners and timelines
 - [ ] Footer reads `Made with IBM Bob`
-- [ ] CSS is copied verbatim from `templates/q2-2027-connector-use-cases.html`
+- [ ] CSS is copied verbatim from `templates/usecase-template.html`
