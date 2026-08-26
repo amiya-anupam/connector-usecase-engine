@@ -4,13 +4,21 @@ name: Bidirectional Sync with IBM GHE
 #   1. On every push to github.com (public → IBM GHE)
 #   2. On a schedule (polls IBM GHE → public)
 #   3. Manually via workflow_dispatch
+#
+# Required secrets (set in github.com repo Settings → Secrets → Actions):
+#   IBM_GHE_PAT  — Personal Access Token from github.ibm.com with repo scope
+#                  Create at: https://github.ibm.com/settings/tokens
+#                  Scopes needed: repo (full)
+#   GH_PUBLIC_PAT — Fine-grained or classic PAT from github.com with repo+workflow scope
+#                   Create at: https://github.com/settings/tokens
+#                   Scopes needed: repo (full), workflow
 on:
   push:
     branches:
       - main
       - dev
   schedule:
-    # Runs every 30 minutes — pulls from IBM GHE into github.com
+    # Runs every 30 minutes — polls IBM GHE and pushes any new commits to github.com
     - cron: '*/30 * * * *'
   workflow_dispatch:
     inputs:
@@ -35,11 +43,11 @@ jobs:
           git config --global user.name  "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      # ── Clone IBM GHE repo ──────────────────────────────────────────────────
+      # ── Clone IBM GHE repo (uses PAT, not OAuth token) ──────────────────────
       - name: Clone IBM GHE repo
         run: |
           git clone \
-            "https://Amiya-Anupam1:${{ secrets.IBM_GHE_TOKEN }}@github.ibm.com/Amiya-Anupam1/connector-usecase-engine.git" \
+            "https://x-token:${{ secrets.IBM_GHE_PAT }}@github.ibm.com/Amiya-Anupam1/connector-usecase-engine.git" \
             ibm-repo
           cd ibm-repo
           git fetch --all --prune
@@ -49,24 +57,31 @@ jobs:
         working-directory: ibm-repo
         run: |
           git remote add public \
-            "https://amiya-anupam:${{ secrets.GH_PUBLIC_TOKEN }}@github.com/amiya-anupam/connector-usecase-engine.git"
+            "https://x-token:${{ secrets.GH_PUBLIC_PAT }}@github.com/amiya-anupam/connector-usecase-engine.git"
           git fetch public --prune
 
-      # ── IBM GHE → github.com (always runs) ──────────────────────────────────
+      # ── IBM GHE → github.com ─────────────────────────────────────────────────
+      # Runs on: schedule, workflow_dispatch(both|ibm-to-public)
       - name: Push IBM GHE → github.com
-        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' && inputs.direction != 'public-to-ibm' }}
+        if: >-
+          github.event_name == 'schedule' ||
+          (github.event_name == 'workflow_dispatch' && inputs.direction != 'public-to-ibm')
         working-directory: ibm-repo
         run: |
           for branch in main dev; do
             echo "→ Syncing branch: $branch (IBM → public)"
             git checkout "$branch" 2>/dev/null || git checkout -b "$branch" "origin/$branch"
-            git push public "$branch" --force-with-lease || echo "::warning::Could not push $branch to public (may have diverged)"
+            git push public "$branch" --force-with-lease \
+              || echo "::warning::Could not push $branch to public (may have diverged)"
           done
           git push public --tags
 
-      # ── github.com → IBM GHE (runs on push to github.com) ───────────────────
+      # ── github.com → IBM GHE ─────────────────────────────────────────────────
+      # Runs on: push to github.com, workflow_dispatch(both|public-to-ibm)
       - name: Push github.com → IBM GHE
-        if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' && inputs.direction != 'ibm-to-public' }}
+        if: >-
+          github.event_name == 'push' ||
+          (github.event_name == 'workflow_dispatch' && inputs.direction != 'ibm-to-public')
         working-directory: ibm-repo
         run: |
           branch="${{ github.ref_name }}"
@@ -75,7 +90,8 @@ jobs:
           git checkout "$branch" 2>/dev/null || git checkout -b "$branch" "origin/$branch"
           git merge "public/$branch" --no-edit --allow-unrelated-histories \
             -m "chore: sync from github.com [$branch]" || {
-              echo "::warning::Merge conflict on $branch — skipping push to IBM GHE"
-              exit 0
+            echo "::warning::Merge conflict on $branch — skipping IBM GHE push"
+            exit 0
           }
-          git push origin "$branch" --force-with-lease || echo "::warning::Could not push $branch to IBM GHE"
+          git push origin "$branch" --force-with-lease \
+            || echo "::warning::Could not push $branch to IBM GHE"
