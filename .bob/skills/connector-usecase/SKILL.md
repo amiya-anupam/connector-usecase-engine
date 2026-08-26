@@ -6,7 +6,7 @@ description: >
   "write use cases for connectors", "quarterly connector use case doc", or
   "/connector-usecase". Accepts 1 connector or up to 30 connectors per run.
   Produces a fully structured HTML output file identical in layout to
-  templates/q2-2027-connector-use-cases.html.
+  templates/usecase-template.html.
 metadata:
   argument-hint: "quarter=\"Q3 2027\" connectors=\"Salesforce, SAP\" industry_focus=\"BFSI\""
 ---
@@ -16,7 +16,7 @@ metadata:
 Automates the quarterly IBM App Connect connector use case generation workflow:
 market research → framework check → priority scoring → substitution analysis → HTML output.
 
-All output HTML must be **structurally and visually identical** to `templates/q2-2027-connector-use-cases.html`.
+All output HTML must be **structurally and visually identical** to `templates/usecase-template.html`.
 All layout and content rules are defined in `output-template.md`.
 All connector availability and substitution lookups use `connector-catalog.md`.
 Both files are in the same directory as this SKILL.md.
@@ -193,7 +193,7 @@ Determine the roadmap version number from `connector-catalog.md` header or defau
 ## Step 6 — Assemble the HTML File
 
 Read `output-template.md` using `read_file` to verify all rules before writing.
-Read the full CSS block from `templates/q2-2027-connector-use-cases.html` using `read_file`
+Read the full CSS block from `templates/usecase-template.html` using `read_file`
 and copy it verbatim into the `<style>` tag of the output file.
 
 Assemble the complete HTML in this exact order:
