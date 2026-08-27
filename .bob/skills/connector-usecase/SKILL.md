@@ -2,12 +2,14 @@
 name: connector-usecase
 description: >
   Use when generating use cases for any software product — either connector use cases
-  (what integrations the product supports or is missing) or product use cases
+  (what integrations the product supports or is missing), connector candidate evaluation
+  (should we build a connector for this product on a target platform?), or product use cases
   (gaps, opportunities, and integration-enabled scenarios).
   Triggers on phrases like "generate use cases", "run connector-usecase",
-  "write use cases for", "connector use cases", "product use cases", or
-  "/connector-usecase". Accepts any product name. Interactively discovers
-  the product, its connector model, and the user's goal before generating output.
+  "write use cases for", "connector use cases", "product use cases",
+  "connector candidate", "should we build a connector for", or "/connector-usecase".
+  Accepts any product name. Interactively discovers the product, the user's intent,
+  and the target platform (for connector candidate evaluation) before generating output.
   Produces a fully structured HTML output file identical in layout to
   templates/usecase-template.html.
   To run the flow test suite, say "/test connector-usecase" or
@@ -20,56 +22,141 @@ metadata:
 # Use Case Engine
 
 Automates product use case generation through interactive product discovery:
-product intelligence → competitive landscape → mode selection → path-specific analysis → HTML output.
+product intelligence → competitive landscape → intent clarification → path-specific analysis → HTML output.
 
 All output HTML must be **structurally and visually identical** to `templates/usecase-template.html`.
 All layout and content rules are defined in `output-template.md`.
 Both files are in the same directory as this SKILL.md.
 
-After Step 0 resolves `product_name`, Bob derives a `product_slug`
-(lower-case, hyphens, no punctuation — e.g. `"IBM App Connect Enterprise"` → `"ibm-app-connect-enterprise"`)
-and checks whether a file named `{product_slug}-catalog.md` exists in this skill directory using `glob`.
+### companion_reference loading (intent-aware)
 
-- **If the file exists** → read it once with `read_file` and store its content as `companion_reference`.
-  Use it throughout as the companion connector source and substitution reference.
-- **If no such file exists** → `companion_reference` is `null`.
-  All companion connectors come from `integration_ecosystem` in `landscape_profile`
-  and the connector/adapter list discovered in Steps C2a or C2b.
+After Step 0 resolves `product_name` and `user_intent`, Bob derives slugs and checks for catalog files:
+
+**For `user_intent = A` or `user_intent = C` (Connector Existing or Product path):**
+- Derive `product_slug` from `product_name`.
+- Run `glob(".bob/skills/connector-usecase/{product_slug}-catalog.md")`.
+- If found → `read_file` and store as `companion_reference`. Use throughout as the companion connector source.
+- If not found → try first two slug segments, then set `companion_reference = null`.
+
+**For `user_intent = B` (Connector Candidate path):**
+- Derive `target_platform_slug` from `target_platform` (NOT from `product_name`).
+  Examples: `"IBM App Connect"` → `"ibm-app-connect"`, `"MuleSoft"` → `"mulesoft"`.
+- Run `glob(".bob/skills/connector-usecase/{target_platform_slug}-catalog.md")`.
+- If found → `read_file` and store as `companion_reference`. This is the platform's connector catalog — use it for gap analysis throughout the Connector Candidate Path.
+- If not found → `companion_reference = null`. Use landscape research for platform context.
 
 This mechanism requires **zero product-name conditionals** anywhere in this skill.
-It works for any product that has a pre-built reference file and equally for any product that does not.
+It works for any product/platform that has a pre-built reference file and equally for those that do not.
 
 ---
 
-## Step 0 — Onboarding
+## Step 0-A — Product Name Collection
 
 Ask using `ask_followup_question` before doing anything else.
 
 **Required — ask this:**
-> "What is the name of the product you want to generate use cases for?"
+> "What is the name of the product you want to work with?"
 
 Store as `product_name`.
+
+---
+
+## Step 0-B — Intent Clarification Gate
+
+Immediately after storing `product_name`, ask using `ask_followup_question`:
+
+> "What are you trying to do with {product_name}?"
+
+- **Option A:** `"Analyse {product_name}'s existing integrations — what it connects to, what connectors it already has, where the gaps are"`
+- **Option B:** `"Evaluate {product_name} as a new connector to build for a platform — should we build it, what would it unlock?"`
+- **Option C:** `"Explore product use cases — gaps {product_name} isn't solving and new scenarios integration could enable"`
+- **Option D:** `"Not sure yet — explain each option"`
+
+Store selection as `user_intent`. Branch:
+- **A → Step 0-C** (slug + companion_reference for Connector Existing path)
+- **B → Step 0-B2** (collect target_platform, then Step 0-C)
+- **C → Step 0-C** (slug + companion_reference for Product path)
+- **D → Step 0-D** (explain then ask again)
+
+---
+
+### Step 0-D — Explain Options
+
+Respond in chat:
+```
+Here's what each option does:
+
+**A — Connector Use Cases (Existing)**
+Looks at what integrations {product_name} already has (e.g. in its connector catalog or adapter list),
+finds gaps vs. competitors, and generates use cases showing what each connector enables.
+Best when: {product_name} is a platform and you want to document its integration landscape.
+
+**B — Connector Candidate Evaluation**
+Evaluates {product_name} as a new connector to build for a target platform (e.g. IBM App Connect).
+Researches platform gaps, API fit, competitive pressure, and demand signals.
+Generates a build-recommendation card and up to 5 cross-platform use cases.
+Best when: your team is deciding whether to invest in building a {product_name} connector.
+
+**C — Product Use Cases**
+Looks at what {product_name} is NOT doing today, finds opportunities via trends and adjacent markets,
+and explores what becomes possible by connecting {product_name} to other systems.
+Best when: you want strategic use cases for a product roadmap or pitch.
+```
+
+Then loop back to **Step 0-B** and ask the same four options again.
+
+---
+
+### Step 0-B2 — Collect Target Platform (Intent B only)
+
+Ask using `ask_followup_question`:
+
+> "Which platform are you building this {product_name} connector for?"
+
+- **Option A:** `"IBM App Connect"`
+- **Option B:** `"MuleSoft Anypoint"`
+- **Option C:** `"Workato"`
+- **Option D:** `"Boomi"`
+- **Option E:** `"Another platform — I'll type the name"`
+
+Store as `target_platform`. If Option E, accept the user's typed platform name.
+
+Proceed to **Step 0-C**.
+
+---
+
+## Step 0-C — Slug Derivation and companion_reference Loading
+
+1. Derive `product_slug`: convert `product_name` to lower-case, replace spaces and punctuation with hyphens, collapse multiple hyphens.
+   Examples: `"Tenable"` → `"tenable"`, `"SAP S/4HANA"` → `"sap-s-4hana"`, `"IBM App Connect Enterprise"` → `"ibm-app-connect-enterprise"`.
+
+2. **If `user_intent = B`** (Connector Candidate):
+   - Derive `target_platform_slug` the same way from `target_platform`.
+     Example: `"IBM App Connect"` → `"ibm-app-connect"`.
+   - Run `glob(".bob/skills/connector-usecase/{target_platform_slug}-catalog.md")`.
+   - If found → `read_file` it and store as `companion_reference` (this is the platform catalog).
+   - If not found → `companion_reference = null`.
+
+3. **If `user_intent = A` or `user_intent = C`**:
+   - Run `glob(".bob/skills/connector-usecase/{product_slug}-catalog.md")`.
+   - If found → `read_file` it and store as `companion_reference`.
+   - If not found → try first two segments of `product_slug` and glob again.
+   - If still not found → `companion_reference = null`.
+
+4. Log in memory: `{ product_slug, user_intent, target_platform_slug (if B), companion_reference_file: "{slug}-catalog.md" | null }`.
 
 **Optional — ask this only if not already provided:**
 > "Do you want to focus on any specific industries? (e.g. BFSI, Healthcare, Retail — leave blank for all)"
 
 Store as `industry_focus` (default: all industries).
 
-**Immediately after storing `product_name`, before any research:**
-
-1. Derive `product_slug` by converting `product_name` to lower-case, replacing spaces and punctuation with hyphens, and collapsing multiple hyphens.
-   Examples: `"IBM App Connect Enterprise"` → `"ibm-app-connect-enterprise"`, `"Salesforce"` → `"salesforce"`, `"SAP S/4HANA"` → `"sap-s-4hana"`.
-
-2. Run `glob(".bob/skills/connector-usecase/{product_slug}-catalog.md")`.
-   - If the file is found → `read_file` it immediately and store its content as `companion_reference`.
-   - If not found, try the first two segments of the slug (e.g. `"ibm-app-connect"` from `"ibm-app-connect-enterprise"`) and run glob again.
-   - If still not found → set `companion_reference = null`.
-
-3. Log in memory: `{ product_slug, companion_reference_file: "{slug}-catalog.md" | null }`.
-
 Do not ask for quarter, connectors, track, or any other input at this stage.
-Confirm back in one line: `"Got it — researching {product_name}. Running product intelligence and competitive landscape analysis..."`
-Then proceed immediately to Step 1 without waiting for further input.
+
+Confirm in one line:
+- If `user_intent = B`: `"Got it — evaluating {product_name} as a connector candidate for {target_platform}. Running platform gap analysis and subject intelligence..."`
+- Otherwise: `"Got it — researching {product_name}. Running product intelligence and competitive landscape analysis..."`
+
+Then proceed immediately to **Step 1** without waiting for further input.
 
 ---
 
@@ -91,12 +178,13 @@ Run all searches automatically. Do not ask the user anything during this step.
 
 | Field | What to extract |
 |-------|----------------|
-| `product_category` | e.g. CRM, DevOps, ITSM, Payments, Observability, ERP, Supply Chain |
+| `product_category` | e.g. CRM, DevOps, ITSM, Payments, Observability, ERP, Supply Chain, Security |
 | `product_description` | 1–2 sentence summary of what it does |
-| `product_key_users` | who uses it — developers, finance teams, operations, etc. |
-| `product_data_types` | what data it produces or consumes — events, records, metrics, transactions |
-| `product_vendor` | who makes it — IBM, Salesforce, etc. |
+| `product_key_users` | who uses it — developers, finance teams, operations, security teams, etc. |
+| `product_data_types` | what data it produces or consumes — events, records, metrics, transactions, vulnerabilities |
+| `product_vendor` | who makes it |
 | `product_market_size` | customer count, market share %, or notable enterprise users if available |
+| `product_api_model` | REST API / GraphQL / webhooks / SOAP — relevant for Connector Candidate path |
 
 Store `product_profile`. It feeds all subsequent steps.
 
@@ -123,13 +211,18 @@ Run all searches automatically in parallel. Do not ask the user anything during 
 | `competitor_ipaas_connectors` | which iPaaS platforms have connectors for this product and what those connectors do |
 | `industry_verticals` | which industries have highest demand for this product |
 
-Store `landscape_profile`. It feeds both the Connector Path and Product Path.
+Store `landscape_profile`. It feeds all three paths.
 
 ---
 
-## Step 3 — Mode Selection
+## Step 3 — Mode Routing
 
-Present findings to the user and ask what they want to generate.
+**If `user_intent` was set in Step 0-B (A, B, or C):** skip this step entirely and route directly:
+- `user_intent = A` → **Connector Path** (Step C1)
+- `user_intent = B` → **Connector Candidate Path** (Step N1)
+- `user_intent = C` → **Product Path** (Step P1)
+
+**Only show this step if the user chose Option D in Step 0-B** (not sure yet) and the clarification loop has not resolved.
 
 Show a brief summary (3–4 lines) of what was found:
 ```
@@ -143,18 +236,19 @@ Then use `ask_followup_question`:
 > "What would you like to generate?"
 
 - **Option A:** `"Connector Use Cases — analyse what integrations/connectors the product supports or is missing, and generate use cases around those"`
-- **Option B:** `"Product Use Cases — explore gaps the product isn't solving, opportunities it could fulfil, and new use cases enabled by integration"`
+- **Option B:** `"Connector Candidate Evaluation — evaluate {product_name} as a new connector to build for a platform (e.g. IBM App Connect)"`
+- **Option C:** `"Product Use Cases — explore gaps the product isn't solving, opportunities it could fulfil, and new use cases enabled by integration"`
 
-Store selection as `generation_mode`. Branch to the appropriate path.
+Store selection as `generation_mode`/`user_intent`. For Option B, ask **Step 0-B2** before proceeding. Branch accordingly.
 
 ---
 
 # ══════════════════════════════════════════
-# CONNECTOR PATH  (generation_mode = A)
+# CONNECTOR PATH  (user_intent = A)
 # ══════════════════════════════════════════
 
 > **Standing instruction for the entire Connector Path:**
-> `companion_reference` was resolved in Step 0 (runtime file discovery).
+> `companion_reference` was resolved in Step 0-C (runtime file discovery).
 > If `companion_reference` is not null, use it as the companion connector source and substitution reference.
 > If `companion_reference` is null, use `integration_ecosystem` from `landscape_profile`
 > and the catalog/adapter list discovered in C2a or C2b.
@@ -347,16 +441,196 @@ Read `output-template.md` using `read_file` and `templates/usecase-template.html
 Assemble the HTML file strictly following all rules in `output-template.md` (Sections 1–14, 16).
 Use the **Connector path** variants for header, subtitle, summary bar, scope note, TOC, and section wrappers.
 
+Output filename: `output/{product-slug}-connector-use-cases.html`
+
 Proceed to **Step Final — Quality, Commit, Summary**.
 
 ---
 
 # ══════════════════════════════════════════
-# PRODUCT PATH  (generation_mode = B)
+# CONNECTOR CANDIDATE PATH  (user_intent = B)
+# ══════════════════════════════════════════
+
+> **Standing instruction for the entire Connector Candidate Path:**
+> The subject (`product_name`) is being evaluated as a NEW connector to build ON the `target_platform`.
+> Research is platform-first: understand what the platform already has, then assess the subject's fit.
+> `companion_reference` was loaded from `{target_platform_slug}-catalog.md` (not from `{product_slug}-catalog.md`).
+> If `companion_reference` is not null, it is the target platform's connector catalog — use it for all gap analysis.
+> **Hard cap: maximum 5 use cases in the output.** Do not exceed this.
+> Output filename: `output/{product-slug}-connector-candidate-{target-platform-slug}.html`
+
+## Step N1 — Platform Gap Analysis
+
+Understand what the target platform already has in the same category as `{product_name}`.
+
+**If `companion_reference` is not null:** scan it for connectors in the same `product_category` as `{product_name}`.
+List all connectors in that category and note their status (Managed, Community, Planned, etc.) and planned quarter if present.
+
+**Run these searches in parallel:**
+1. `mcp__tavily__tavily_search`: `"{target_platform} {product_category} connectors list"` — `search_depth: "advanced"`
+2. `mcp__tavily__tavily_search`: `"{target_platform} connector catalog 2025 2026"` — `search_depth: "advanced"`
+3. `mcp__product-knowledge_aef3__search`: `"{target_platform} connector"` — sources: `["ibm_docs", "cloud_docs"]`
+
+**Synthesise and store as `platform_gap_analysis`:**
+- `existing_category_connectors[]` — connectors already on the platform in the same category as `{product_name}`
+- `category_gaps[]` — what the platform is missing in this category (vs. competitor iPaaS platforms)
+- `platform_audience` — who the platform's customers are (the buyer/integrator persona)
+
+---
+
+## Step N2 — Subject Intelligence
+
+Research what `{product_name}` actually does, what API and data model it exposes, and what events or triggers it fires.
+
+`product_profile` from Step 1 is already in memory. Augment it with connector-specific detail.
+
+**Run these searches in parallel:**
+1. `mcp__tavily__tavily_search`: `"{product_name} REST API documentation triggers webhooks events"` — `search_depth: "advanced"`
+2. `mcp__tavily__tavily_search`: `"{product_name} API objects records data model"` — `search_depth: "advanced"`
+3. `mcp__tavily__tavily_search`: `"{product_name} enterprise integration SIEM SOAR ticketing"` — `search_depth: "advanced"`
+
+**Synthesise and store as `subject_intel`:**
+- `api_model` — REST / GraphQL / SOAP / webhooks / polling
+- `key_triggers` — events/webhooks the API fires (e.g. "new critical vulnerability", "asset state change")
+- `key_actions` — operations a connector can perform (e.g. "get vulnerabilities", "close finding")
+- `data_objects` — primary records (e.g. vulnerabilities, assets, findings, scans)
+- `auth_model` — API key / OAuth2 / Basic — affects connector build complexity
+
+---
+
+## Step N3 — Fit Analysis
+
+Which platform connectors does `{product_name}` pair well with? What flows become possible that don't exist today?
+
+Using `platform_gap_analysis.existing_category_connectors` and `subject_intel.key_triggers` and `subject_intel.key_actions`:
+
+**Reason about cross-connector flows:**
+For each of the top 5–8 connectors already on `{target_platform}`, consider:
+- "When `{product_name}` fires event X, what can the platform route it to?"
+- "What action in `{product_name}` would complete a workflow that starts in connector Y?"
+
+**Run these searches:**
+1. `mcp__tavily__tavily_search`: `"{product_name} {target_platform} integration workflow"` — `search_depth: "advanced"`
+2. `mcp__tavily__tavily_search`: `"{product_name} ServiceNow Jira Slack SIEM integration automation"` — `search_depth: "advanced"`
+
+**Synthesise and store as `fit_analysis`:**
+- `top_pairings[]` — ranked list of `{target_platform}` connectors that pair best with `{product_name}`, with rationale
+- `sample_flows[]` — 5–7 concrete end-to-end flows (these become use case seeds)
+- `integration_complexity` — Low / Medium / High (based on API model, auth, data volume)
+
+---
+
+## Step N4 — Competitive Pressure
+
+Do MuleSoft / Boomi / Workato already have a `{product_name}` connector? What do those connectors do?
+
+**Run these searches in parallel:**
+1. `mcp__tavily__tavily_search`: `"MuleSoft {product_name} connector"` — `search_depth: "advanced"`
+2. `mcp__tavily__tavily_search`: `"Boomi {product_name} connector integration"` — `search_depth: "advanced"`
+3. `mcp__tavily__tavily_search`: `"Workato {product_name} recipe integration"` — `search_depth: "advanced"`
+4. `mcp__tavily__tavily_search`: `"{product_name} connector iPaaS integration platform"` — `search_depth: "advanced"`
+
+**Synthesise and store as `competitive_pressure`:**
+- `has_connector_on[]` — list of iPaaS platforms that already have a `{product_name}` connector
+- `competitor_connector_actions[]` — what actions/triggers those connectors support
+- `competitive_gap` — is `{target_platform}` the only major iPaaS missing this connector? (yes/no + evidence)
+
+---
+
+## Step N5 — Demand Validation
+
+How widely deployed is `{product_name}` among enterprises? What evidence of manual workarounds exists?
+
+**Run these searches in parallel:**
+1. `mcp__tavily__tavily_search`: `"{product_name} enterprise customers market share Fortune 500"` — `search_depth: "advanced"`
+2. `mcp__tavily__tavily_search`: `"{product_name} manual integration workaround scripting community"` — `search_depth: "advanced"`
+3. `mcp__tavily__tavily_search`: `"{product_name} {target_platform} integration request community feature"` — `search_depth: "advanced"`
+
+**Synthesise and store as `demand_signals`:**
+- `customer_footprint` — estimated enterprise customer count or market share
+- `industry_verticals[]` — top 3 industries where `{product_name}` is deployed (use `landscape_profile.industry_verticals` if already known)
+- `manual_workaround_evidence` — any documented scripting, export/import, or custom code workarounds between `{product_name}` and `{target_platform}` or its ecosystem
+- `explicit_requests` — any community posts, feature requests, or forum threads asking for a `{product_name}` connector on `{target_platform}`
+
+---
+
+## Step N6 — Unique Angle Check
+
+What does `{product_name}` offer that the functionally similar connectors already on `{target_platform}` don't?
+
+Using `platform_gap_analysis.existing_category_connectors` and `companion_reference` (if not null):
+- Identify the connector(s) on `{target_platform}` that are closest to `{product_name}` in category.
+- Compare: what does `{product_name}` do that those connectors don't? (Different data objects? Richer API? Better enterprise auth? Different market segment?)
+
+**Run this search:**
+1. `mcp__tavily__tavily_search`: `"{product_name} vs {closest_existing_connector} comparison enterprise features"` — `search_depth: "advanced"`
+
+**Synthesise and store as `unique_angle`:**
+- `closest_platform_connector` — the most similar connector already on `{target_platform}`
+- `differentiators[]` — what `{product_name}` offers that the closest connector doesn't
+- `overlap_risk` — Low / Medium / High (would this connector cannibalise the existing one?)
+- `recommended_positioning` — one sentence on how to position this connector in the catalog
+
+---
+
+## Step N-Final — Connector Candidate HTML Assembly
+
+Read `output-template.md` using `read_file` and `templates/usecase-template.html` using `read_file`.
+
+Assemble the HTML file as a **single connector candidate card** with the following structure.
+Strictly follow all layout, typography, and colour rules from `output-template.md`.
+Use the **Connector path** base layout but with Candidate-specific overrides described below.
+
+### Header overrides
+- Page title: `{product_name} — Connector Candidate Evaluation`
+- Subtitle: `Target platform: {target_platform} · Category: {product_category}`
+- Summary bar: show `Build Recommendation`, `Integration Complexity`, `Competitive Pressure`, `Top Pairings Count`
+
+### Build Recommendation `.ci-box`
+At the top of the content area, render a single evaluation `.ci-box` (use the featured/highlighted variant) with:
+- **Recommendation:** `Build` / `Evaluate Further` / `Deprioritise` — determined by:
+  - **Build**: competitive_gap = yes AND customer_footprint > 1000 enterprises AND overlap_risk ≤ Medium
+  - **Evaluate Further**: one or two of those conditions are met
+  - **Deprioritise**: none of the conditions are met or overlap_risk = High
+- **Rationale:** 2–3 sentences combining evidence from `competitive_pressure`, `demand_signals`, and `unique_angle`
+- **API Complexity:** `subject_intel.integration_complexity`
+- **Closest existing connector:** `unique_angle.closest_platform_connector` with `unique_angle.overlap_risk`
+
+### Use Cases section (hard cap: 5 maximum)
+
+Select the **5 best** flows from `fit_analysis.sample_flows[]`, ranked by:
+1. Business value (which solves the most painful enterprise problem)
+2. Cross-connector richness (which uses the most platform connectors)
+3. Uniqueness (which can't be done with existing platform connectors)
+
+For each use case, generate a full use case block per `output-template.md` Sections 7–10:
+- Apply `.ci-box` label, status badge (`Candidate`), and featured pill if top-ranked
+- Show the full connector flow (Trigger → Steps → Action) naming `{product_name}` alongside `{target_platform}` connectors
+- Include business need and value box
+- Actions table must use these owner columns: `Product Manager`, `Connector Engineering`, `Partnerships`, `Engineering`
+
+**Do NOT generate more than 5 use cases.** If `fit_analysis.sample_flows[]` contains more than 5 items, select the top 5 by the ranking criteria above and discard the rest.
+
+### Competitive Context section
+Below the use cases, add a compact table showing:
+| iPaaS Platform | Has {product_name} connector? | Actions / Triggers |
+with one row per entry from `competitive_pressure.has_connector_on[]` plus a row for `{target_platform}` (marked "Candidate").
+
+### Demand Signals section
+A brief evidence block showing `demand_signals.customer_footprint`, top industries, and any `demand_signals.explicit_requests`.
+
+Output filename: `output/{product-slug}-connector-candidate-{target-platform-slug}.html`
+
+Proceed to **Step Final — Quality, Commit, Summary**.
+
+---
+
+# ══════════════════════════════════════════
+# PRODUCT PATH  (user_intent = C)
 # ══════════════════════════════════════════
 
 > **Standing instruction for the entire Product Path:**
-> `companion_reference` was resolved in Step 0 (runtime file discovery).
+> `companion_reference` was resolved in Step 0-C (runtime file discovery).
 > If `companion_reference` is not null, use it as the Lens 3 companion connector reference.
 > If `companion_reference` is null, use `integration_ecosystem` from `landscape_profile` for Lens 3 flows.
 
@@ -441,12 +715,14 @@ Read `output-template.md` using `read_file` and `templates/usecase-template.html
 Assemble the HTML file strictly following all rules in `output-template.md` (Sections 1–15).
 Use the **Product path** variants for header, subtitle, summary bar, scope note, TOC, and section wrappers.
 
+Output filename: `output/{product-slug}-product-use-cases.html`
+
 Proceed to **Step Final — Quality, Commit, Summary**.
 
 ---
 
 # ══════════════════════════════════════════
-# SHARED FINAL STEPS (both paths)
+# SHARED FINAL STEPS (all paths)
 # ══════════════════════════════════════════
 
 ## Step Final-1 — Quality Verification
@@ -478,19 +754,22 @@ Use `execute_command`. Report commit hash.
 ## Step Final-3 — Final Summary
 
 ```
-## ✅ {product_name} {Mode} Use Cases Complete
+## ✅ {product_name} {Mode} Complete
 
 | | |
 |---|---|
 | **File** | output/{filename}.html |
 | **Product** | {product_name} ({product_category}) |
-| **Mode** | {Connector Use Cases / Product Use Cases} |
+| **Mode** | {Connector Use Cases / Connector Candidate Evaluation / Product Use Cases} |
+| **Target Platform** | {target_platform} (Connector Candidate only) |
 | **Items** | {N} total |
 | **Committed** | dev branch — {commit_hash} |
 
 To merge to main:
-  gh pr create --base main --head dev --title "{product_name} {Mode} Use Cases"
+  gh pr create --base main --head dev --title "{product_name} {Mode}"
 ```
+
+(Omit the Target Platform row if `user_intent ≠ B`.)
 
 ---
 
@@ -502,42 +781,52 @@ After displaying the Step Final-3 summary, use `ask_followup_question`:
 
 Present only the options that are still available for this session:
 
-- **If the user has only run one mode for this product** (either Connector OR Product, not both), offer:
-  - **Option A:** `"Yes — generate {the other mode} for {product_name} (reuses research already done, skips straight to generation)"`
-  - **Option B:** `"Yes — run the full flow for a different product"`
-  - **Option C:** `"No — I'm done for now"`
+- **If `user_intent = A` (Connector Existing) and Product path not yet run**, offer:
+  - **Option A:** `"Yes — generate Product Use Cases for {product_name} (reuses research already done, skips straight to Lens Discovery)"`
+  - **Option B:** `"Yes — evaluate {product_name} as a connector candidate for a platform"`
+  - **Option C:** `"Yes — run the full flow for a different product"`
+  - **Option D:** `"No — I'm done for now"`
 
-- **If the user has already run both modes for this product**, omit Option A and offer only:
+- **If `user_intent = B` (Connector Candidate)**, offer:
+  - **Option A:** `"Yes — generate Connector Use Cases for {product_name} (analyse its own integrations)"`
+  - **Option B:** `"Yes — generate Product Use Cases for {product_name}"`
+  - **Option C:** `"Yes — run the full flow for a different product"`
+  - **Option D:** `"No — I'm done for now"`
+
+- **If `user_intent = C` (Product) and Connector path not yet run**, offer:
+  - **Option A:** `"Yes — generate Connector Use Cases for {product_name} (reuses research already done)"`
+  - **Option B:** `"Yes — evaluate {product_name} as a connector candidate for a platform"`
+  - **Option C:** `"Yes — run the full flow for a different product"`
+  - **Option D:** `"No — I'm done for now"`
+
+- **If all three modes have been run for this product**, omit A and B and offer only:
   - **Option A:** `"Yes — run the full flow for a different product"`
   - **Option B:** `"No — I'm done for now"`
 
 ---
 
-### Branch: Option A — Switch mode for the same product
+### Branch: Switch mode for the same product
 
-`product_profile` and `landscape_profile` are already in memory. Do not repeat Steps 0–3.
+`product_profile` and `landscape_profile` are already in memory. Do not repeat Steps 0–2.
 
-Confirm in one line:
-```
-Switching to {other mode} for {product_name} — picking up where we left off.
-```
+For switching **to Connector Candidate path**: ask **Step 0-B2** to collect `target_platform`, then go to **Step 0-C** (slug derivation) and proceed to **Step N1**.
 
-Then jump directly to the entry point of the new path:
-- Switching **to Connector path** → go to **Step C1** (Catalog Check)
-- Switching **to Product path** → go to **Step P1** (Three-Lens Discovery)
+For switching **to Connector Existing path**: go directly to **Step C1** (Catalog Check).
 
-Mark the new mode as complete after its Final-3 summary. Then loop back to Step Final-4 and offer only Option B / "No" (both modes now done for this product).
+For switching **to Product path**: go directly to **Step P1** (Three-Lens Discovery).
+
+Mark the new mode as complete after its Final-3 summary. Then loop back to Step Final-4 with updated available options.
 
 ---
 
-### Branch: Option B — Different product
+### Branch: Different product
 
 Confirm in one line:
 ```
 Starting fresh for a new product.
 ```
 
-Then go to **Step 0** (Onboarding) and run the full flow from the beginning.
+Then go to **Step 0-A** (Product Name Collection) and run the full flow from the beginning.
 
 ---
 
@@ -545,7 +834,7 @@ Then go to **Step 0** (Onboarding) and run the full flow from the beginning.
 
 Respond with exactly one closing line:
 ```
-All done — {product_name} {mode(s) completed} use cases saved to output/. Open output/{filename}.html in a browser to review.
+All done — {product_name} {mode(s) completed} saved to output/. Open output/{filename}.html in a browser to review.
 ```
 
 Do not ask any further questions.
@@ -564,11 +853,15 @@ Do not ask any further questions.
 | Companion connector unavailable and `companion_reference` is not null | Look up substitute in `companion_reference`, use it in flow, note with `(substitute: {original})` |
 | Companion connector unavailable and `companion_reference` is null | Use nearest equivalent from `integration_ecosystem` or `landscape_profile`, note with `(substitute: {original})` |
 | More than 15 connectors/adapters discovered | Present top 15 by relevance; ask user to confirm or narrow scope before generation |
+| User picks Intent B but does not name a target platform | Ask Step 0-B2 before any research proceeds |
+| Connector Candidate path generates more than 5 use cases | Silently discard the lowest-ranked ones; never write more than 5 to the output file |
+| `target_platform_slug`-catalog.md not found for Intent B | Set `companion_reference = null`; use Tavily search results for platform gap analysis instead |
 
 
 ## Supporting files in this skill directory:
 - output-template.md
 - `{product_slug}-catalog.md` (if it exists for the product — discovered at runtime via glob)
+- `{target_platform_slug}-catalog.md` (if it exists for the target platform — used by Intent B)
 - tests/flow-test.md
 
 Use the read_file and glob tools with paths relative to: .bob/skills/connector-usecase/
