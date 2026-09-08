@@ -305,16 +305,22 @@ The label text and framing adapt to the path and section. All variants use the s
 
 ## 9. Use Case Block (`.use-case`)
 
-Repeat **4–5 times** per connector. Each use case has exactly 4 rows + 1 value box:
+Repeat **4–5 times** per connector. Each use case has exactly 4 rows in this order:
+**Business Need → Flow → Connectors → Business Value**
 
 ```html
 <div class="use-case">
   <div class="uc-title">UC{N} — {ConnectorName} {short description verb phrase}</div>
 
   <div class="uc-row">
+    <span class="uc-label">Business Need</span>
+    <span class="uc-value">{2–3 sentences. Include a quantified pain point: time lost, error rate, regulatory requirement, or cost.}</span>
+  </div>
+
+  <div class="uc-row">
     <span class="uc-label">Flow</span>
     <span class="uc-value">
-      {Step 1 trigger (source system + event)} → <strong>{ProductName}</strong> {action} →
+      {Step 1 trigger (source system + event)} →
       updates/creates in <strong>{SystemName}</strong> →
       notifies via <strong>{SystemName}</strong> →
       {final step}.
@@ -334,12 +340,8 @@ Repeat **4–5 times** per connector. Each use case has exactly 4 rows + 1 value
   </div>
 
   <div class="uc-row">
-    <span class="uc-label">Business Need</span>
-    <span class="uc-value">{2–3 sentences. Include a quantified pain point: time lost, error rate, regulatory requirement, or cost.}</span>
-  </div>
-
-  <div class="value-box">
-    {1–2 sentences. Quantified outcome (time saved, % reduction, compliance met) + IBM selling narrative.}
+    <span class="uc-label">Business Value</span>
+    <span class="uc-value">{1–2 sentences. Quantified outcome (time saved, % reduction, compliance met) + IBM selling narrative.}</span>
   </div>
 </div>
 ```
@@ -373,9 +375,11 @@ Repeat **4–5 times** per connector. Each use case has exactly 4 rows + 1 value
 - Reference a real market pain (manual process, compliance requirement, competitive pressure)
 - 2–3 sentences maximum
 
-### Value Box writing rules
+### Business Value writing rules
+- Plain `uc-row` — same layout as Business Need and Flow. No wrapper div.
+- `uc-label` reads **Business Value**; `uc-value` holds the text.
 - Lead with a quantified outcome (e.g. "Reduces processing time from X to Y")
-- Follow with the IBM selling narrative (joint-sell story, vertical relevance, competitive differentiation)
+- Follow with the selling narrative (joint-sell story, vertical relevance, competitive differentiation)
 - 1–2 sentences only
 
 ---
@@ -460,7 +464,8 @@ Before finalising any generated HTML, verify:
 - [ ] Every item has a `.ci-box` with the correct label for its section type
 - [ ] `.ci-box` cites real market data, user evidence, or competitor reference where applicable
 - [ ] Every use case Flow has `<strong>` tags on every system/connector name mentioned
-- [ ] Every use case has a `.value-box` with a quantified outcome
+- [ ] Every use case has row order: **Business Need → Flow → Connectors → Business Value**
+- [ ] Business Value is a plain `uc-row` (no wrapper div) with `uc-label` "Business Value" and a quantified outcome
 - [ ] All companion connectors come from `companion_reference` (if loaded) or from the product's discovered integration ecosystem
 - [ ] If a companion is unavailable, substitution is applied from the same source and noted in the flow
 - [ ] Status badges match the section type (Existing ★ / Missing ◆ / Available ★ / Inferred ⚠ / Gap ▲ / Opportunity ★ / Integration ◆)
@@ -475,7 +480,7 @@ Before finalising any generated HTML, verify:
 
 ## 15. Product Use Case Mode — Additional Rules
 
-Applies when `generation_mode = B`. Section structure, badges, pills, summary bar, and filename
+Applies when `user_intent = C`. Section structure, badges, pills, summary bar, and filename
 are defined in Sections 3, 6, 8, and 11–13. This section covers only what is not specified there.
 
 **`.ci-box` evidence requirements per lens** (extends Section 7 rules):
