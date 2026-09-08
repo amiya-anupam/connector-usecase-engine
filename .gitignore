@@ -13,9 +13,8 @@ credentials.json
 secrets.json
 config.local.*
 
-# Output files (generated, not source)
-output/*
-!output/.gitkeep
+# Output files (generated, not source — never commit)
+output/
 
 # OS / editor noise
 .DS_Store
