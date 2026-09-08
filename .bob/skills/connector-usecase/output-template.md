@@ -305,7 +305,7 @@ The label text and framing adapt to the path and section. All variants use the s
 
 ## 9. Use Case Block (`.use-case`)
 
-Repeat **4–5 times** per connector. Each use case has exactly 4 rows + 1 value box:
+Repeat **4–5 times** per connector. Each use case has exactly 4 rows:
 
 ```html
 <div class="use-case">
@@ -339,7 +339,10 @@ Repeat **4–5 times** per connector. Each use case has exactly 4 rows + 1 value
   </div>
 
   <div class="value-box">
-    {1–2 sentences. Quantified outcome (time saved, % reduction, compliance met) + IBM selling narrative.}
+    <div class="uc-row">
+      <span class="uc-label">Business Value</span>
+      <span class="uc-value">{1–2 sentences. Quantified outcome (time saved, % reduction, compliance met) + IBM selling narrative.}</span>
+    </div>
   </div>
 </div>
 ```
@@ -373,7 +376,8 @@ Repeat **4–5 times** per connector. Each use case has exactly 4 rows + 1 value
 - Reference a real market pain (manual process, compliance requirement, competitive pressure)
 - 2–3 sentences maximum
 
-### Value Box writing rules
+### Business Value writing rules
+- Uses the same `uc-row` layout as Business Need — `uc-label` reads **Business Value**, `uc-value` holds the text
 - Lead with a quantified outcome (e.g. "Reduces processing time from X to Y")
 - Follow with the IBM selling narrative (joint-sell story, vertical relevance, competitive differentiation)
 - 1–2 sentences only
@@ -460,7 +464,7 @@ Before finalising any generated HTML, verify:
 - [ ] Every item has a `.ci-box` with the correct label for its section type
 - [ ] `.ci-box` cites real market data, user evidence, or competitor reference where applicable
 - [ ] Every use case Flow has `<strong>` tags on every system/connector name mentioned
-- [ ] Every use case has a `.value-box` with a quantified outcome
+- [ ] Every use case has a `.value-box` containing a `uc-row` with `uc-label` "Business Value" and a quantified outcome
 - [ ] All companion connectors come from `companion_reference` (if loaded) or from the product's discovered integration ecosystem
 - [ ] If a companion is unavailable, substitution is applied from the same source and noted in the flow
 - [ ] Status badges match the section type (Existing ★ / Missing ◆ / Available ★ / Inferred ⚠ / Gap ▲ / Opportunity ★ / Integration ◆)
