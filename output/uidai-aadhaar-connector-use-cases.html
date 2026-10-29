@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UIDAI Aadhaar — Connector Use Cases</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px; line-height: 1.6; color: #1f2328;
+    background: #ffffff; padding: 32px 16px 48px;
+  }
+  .page { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #57606a; font-size: 13px; margin-bottom: 28px; }
+  .summary-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 32px; }
+  .stat-box { flex: 1 1 110px; background: #f7f8fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; text-align: center; }
+  .stat-box .num { font-size: 24px; font-weight: 700; line-height: 1; }
+  .stat-box .lbl { font-size: 11px; color: #57606a; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .track-section { margin-bottom: 48px; }
+  .track-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 24px; }
+  .track-header h2 { font-size: 17px; font-weight: 700; }
+  .connector-card { border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 28px; overflow: hidden; }
+  .card-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px; background: #f7f8fa; border-bottom: 1px solid #e5e7eb; }
+  .card-header h3 { font-size: 15px; font-weight: 700; flex: 1; }
+  .card-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; white-space: nowrap; }
+  .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+  .badge-violet { background: #ede9fe; color: #6d28d9; }
+  .badge-green  { background: #dcfce7; color: #15803d; }
+  .badge-orange { background: #fff7ed; color: #c2410c; }
+  .badge-gray   { background: #f1f5f9; color: #475569; }
+  .badge-teal   { background: #ccfbf1; color: #0f766e; }
+  .badge-purple { background: #f3e8ff; color: #7e22ce; }
+  .badge-red    { background: #fee2e2; color: #991b1b; }
+  .p1 { background: #fee2e2; color: #991b1b; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+  .p2 { background: #fef3c7; color: #92400e; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+  .p3 { background: #f1f5f9; color: #475569; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+  .type-tag { font-size: 10px; font-weight: 600; color: #57606a; }
+  .use-cases { padding: 16px; }
+  .use-case { margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid #f0f0f0; }
+  .use-case:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+  .uc-title { font-size: 13px; font-weight: 700; color: #1f2328; margin-bottom: 6px; }
+  .uc-row { display: flex; gap: 6px; margin-bottom: 4px; align-items: flex-start; }
+  .uc-label { font-size: 11px; font-weight: 700; color: #57606a; white-space: nowrap; min-width: 110px; text-transform: uppercase; letter-spacing: 0.03em; padding-top: 1px; }
+  .uc-value { font-size: 13px; color: #1f2328; }
+  .connector-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+  .cpill     { font-size: 11px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 4px; padding: 1px 6px; }
+  .cpill-new { background: #faf5ff; color: #6d28d9; border: 1px solid #ddd6fe; border-radius: 4px; padding: 1px 6px; font-size: 11px; }
+  .cpill-pro { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; border-radius: 4px; padding: 1px 6px; font-size: 11px; }
+  .cpill-prop { background: #fef9c3; color: #92400e; border: 1px solid #fde68a; border-radius: 4px; padding: 1px 6px; font-size: 11px; }
+  .ci-box { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 12px 16px; font-size: 12px; color: #7c2d12; margin-bottom: 16px; line-height: 1.55; }
+  .ci-box strong { color: #9a3412; }
+  .proposal-box { background: #fefce8; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; font-size: 12px; color: #78350f; margin-bottom: 16px; line-height: 1.55; }
+  .proposal-box strong { color: #92400e; }
+  hr { border: none; border-top: 1px solid #e5e7eb; margin: 40px 0; }
+  .note-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; font-size: 12px; color: #1e40af; margin-bottom: 28px; }
+  .actions-section { padding: 0 16px 16px; }
+  .actions-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .actions-table th { background: #f1f5f9; color: #475569; font-weight: 700; padding: 6px 10px; text-align: left; border-bottom: 2px solid #e5e7eb; }
+  .actions-table td { padding: 5px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  .actions-table tr:last-child td { border-bottom: none; }
+  .toc { background: #f7f8fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 18px; margin-bottom: 28px; font-size: 12px; }
+  .toc h4 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #57606a; margin-bottom: 8px; }
+  .toc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px 16px; }
+  .toc-item { color: #3b82d4; }
+  .toc-section { font-weight: 700; color: #1f2328; margin-top: 6px; }
+  .footer { text-align: center; font-size: 12px; color: #57606a; border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 40px; }
+  .eval-card { border: 2px solid #3b82d4; border-radius: 10px; margin-bottom: 32px; overflow: hidden; background: #f0f9ff; }
+  .eval-card-header { padding: 14px 18px; background: #1d4ed8; color: #ffffff; }
+  .eval-card-header h2 { font-size: 16px; font-weight: 700; color: #ffffff; }
+  .eval-card-body { padding: 16px 18px; }
+  .eval-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .eval-field { font-size: 12px; }
+  .eval-field strong { display: block; text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px; color: #57606a; margin-bottom: 2px; }
+  .rec-build { background: #dcfce7; border: 1px solid #86efac; border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 700; color: #15803d; display: inline-block; margin-bottom: 10px; }
+  .rec-evaluate { background: #fef9c3; border: 1px solid #fde68a; border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 700; color: #92400e; display: inline-block; margin-bottom: 10px; }
+  .context-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .context-table th { background: #f1f5f9; color: #475569; font-weight: 700; padding: 6px 10px; text-align: left; border-bottom: 2px solid #e5e7eb; }
+  .context-table td { padding: 5px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  .context-table tr:last-child td { border-bottom: none; }
+  .demand-block { background: #f7f8fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 18px; margin-top: 24px; font-size: 12px; }
+  .demand-block h4 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #57606a; margin-bottom: 8px; }
+  .gap-framework { background: #fef2f2; border: 2px solid #fca5a5; border-radius: 10px; padding: 16px 20px; margin-bottom: 28px; font-size: 12px; color: #7f1d1d; line-height: 1.6; }
+  .gap-framework strong { color: #991b1b; }
+  .gap-framework .gap-title { font-size: 14px; font-weight: 700; color: #991b1b; margin-bottom: 8px; letter-spacing: 0.01em; }
+  .gap-grid { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .gap-party { flex: 1 1 200px; background: #ffffff; border: 1px solid #fca5a5; border-radius: 8px; padding: 10px 14px; font-size: 11px; color: #374151; }
+  .gap-party .party-label { font-weight: 700; font-size: 12px; color: #1f2328; margin-bottom: 4px; }
+  .gap-party .party-check { font-size: 11px; }
+  .gap-party.has { border-color: #86efac; background: #f0fdf4; }
+  .gap-party.gap { border-color: #fca5a5; background: #fff1f2; }
+  .track-label { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-right: 6px; margin-bottom: 4px; }
+  .track-a { background: #dbeafe; color: #1d4ed8; }
+  .track-b { background: #dcfce7; color: #15803d; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>UIDAI Aadhaar &mdash; Connector Use Cases</h1>
+<p class="subtitle">UIDAI (Unique Identification Authority of India) &nbsp;&middot;&nbsp; Identity &amp; eKYC &nbsp;&middot;&nbsp; 4 Connector Scenarios &nbsp;&middot;&nbsp; BFSI &middot; Enterprise &middot; Government &nbsp;&middot;&nbsp; Prepared for UIDAI Production Onboarding</p>
+
+<!-- SUMMARY BAR -->
+<div class="summary-bar">
+  <div class="stat-box"><div class="num" style="color:#3b82d4">4</div><div class="lbl">Connector Scenarios</div></div>
+  <div class="stat-box"><div class="num" style="color:#6d28d9">16</div><div class="lbl">Use Cases</div></div>
+  <div class="stat-box"><div class="num" style="color:#15803d">2</div><div class="lbl">Credential Tracks</div></div>
+  <div class="stat-box"><div class="num" style="color:#92400e">4</div><div class="lbl">Customer Verticals</div></div>
+  <div class="stat-box"><div class="num" style="color:#1f2328">37.3Cr</div><div class="lbl">UIDAI eKYC/Month (Apr 2025)</div></div>
+</div>
+
+<!-- SCOPE NOTE -->
+<div class="note-box">
+  <strong>About this document.</strong> This use-case document has been prepared in support of IBM's formal production onboarding request to UIDAI. It describes IBM's role as an integration platform provider — not a direct consumer of UIDAI APIs — the target enterprise customer base, the credential model under which customers access UIDAI services through the IBM App Connect connector, and the specific business workflows the connector enables. All use cases are grounded in documented enterprise demand across BFSI, HR, government welfare, and gig-platform verticals. The connector is designed to be modular — supporting both customers who hold their own AUA/KUA licence (Track A) and customers who access Aadhaar services via a licensed intermediary such as IDfy or Signzy (Track B) — with the ability to switch tracks within the same integration flow as their regulatory posture matures.
+</div>
+
+<!-- THREE-PARTY GAP FRAMEWORK -->
+<div class="gap-framework">
+  <div class="gap-title">&#9888; Core Commercial Framework &mdash; IBM License &ne; Government Data Access</div>
+  <p>A customer purchases the IBM India Stack Connectivity Pack and receives pre-built, production-ready App Connect connectors for Aadhaar, DigiLocker, UPI, GSTN, Account Aggregator, eSign, ONDC, and ABHA. <strong>But the connector is just a pipe.</strong> The pipe carries no data unless the customer holds their own licence or registration with the underlying government authority. IBM's software licence covers the connector runtime (ACE BAR files, CP4I-certified). It does not confer the legal right to query UIDAI's CIDR, MeitY's DigiLocker, or NPCI's UPI rails on behalf of that customer's end users. IBM is the integration platform provider; the customer (or their licensed intermediary) is the legal credential holder; UIDAI is the data authority. These are three distinct roles, and IBM's onboarding request to UIDAI concerns only IBM's right to build, certify, and maintain the connector infrastructure — not to consume Aadhaar data on behalf of any end user.</p>
+  <div class="gap-grid">
+    <div class="gap-party has">
+      <div class="party-label">&#9989; IBM</div>
+      <div class="party-check">Holds connector software licence (ACE BAR files, CP4I-certified). Can deploy, configure, and orchestrate flows. Registers as OVSE for Offline KYC. Provides consent audit trail, PII masking, canonical schema, multi-vendor fallback.</div>
+    </div>
+    <div class="gap-party gap">
+      <div class="party-label">&#10060; Customer</div>
+      <div class="party-check">Has IBM subscription. Can run connectors. But has <strong>no UIDAI API credentials of their own</strong> unless they hold an AUA/KUA licence (Track A) or engage a licensed KYC-aaS intermediary (Track B). This gap is what IBM's modular connector design resolves.</div>
+    </div>
+    <div class="gap-party has">
+      <div class="party-label">&#9989; UIDAI / Govt API</div>
+      <div class="party-check">Requires separate AUA/KUA licence held by a legally eligible entity (Section 4: banks, telcos, insurers, PMLA bodies) or access via a licensed KYC-aaS broker. UIDAI is the data authority and the approving body for production access.</div>
+    </div>
+  </div>
+  <p style="margin-top:10px"><strong>Two credential tracks:</strong> <span class="track-label track-a">Track A — AUA/KUA Direct</span> Customer holds own AUA/KUA (banks, NBFCs, insurers, sovereign entities). IBM registers as Sub-AUA under the customer's UIDAI agreement (Circular 02/2025). &nbsp;&nbsp; <span class="track-label track-b">Track B — Brokered (IDfy / Signzy)</span> Customer accesses Aadhaar services via a licensed KYC-aaS intermediary. IBM routes through their AUA-licensed API, adding consent audit trail, PII masking, and canonical schema. Connector is modular — customers can switch tracks in the flow.</p>
+</div>
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+  <h4>Contents</h4>
+  <div class="toc-grid">
+    <span class="toc-section">Existing Connector Scenarios (4)</span>
+    <span class="toc-item">1. Aadhaar eKYC — Bank &amp; NBFC Onboarding</span>
+    <span class="toc-item">2. Aadhaar Offline KYC (OKYC / OVSE) — Enterprise HR &amp; Gig Platforms</span>
+    <span class="toc-item">3. Aadhaar OTP Authentication — Government Welfare &amp; DBT</span>
+    <span class="toc-item">4. Aadhaar eSign — Paperless Loan &amp; Policy Execution</span>
+  </div>
+</div>
+
+<!-- ============================================================
+     SECTION: EXISTING CONNECTOR SCENARIOS
+     ============================================================ -->
+<div class="track-section">
+<div class="track-header">
+  <h2>Existing Connector Scenarios</h2>
+  <span class="badge badge-green">4 Scenarios</span>
+  <span class="badge badge-gray">BFSI &middot; HR &middot; Government &middot; Legal</span>
+</div>
+<div class="note-box" style="margin-bottom:20px">
+  <strong>Customer-credentialled access.</strong> Every use case below is designed for customers who either hold their own UIDAI AUA/KUA licence (Track A) or access Aadhaar services via a licensed KYC-aaS intermediary such as IDfy or Signzy (Track B). IBM's App Connect connector provides the orchestration, consent, audit, and integration layer — it never holds or stores Aadhaar PII beyond the active API session.
+</div>
+
+<!-- ============================================================
+     1 / Aadhaar eKYC — Bank & NBFC Onboarding
+     ============================================================ -->
+<div class="ci-box">
+  <strong>1 / Aadhaar eKYC — Integration value:</strong>
+  UIDAI recorded 37.3 crore eKYC transactions in April 2025 alone, demonstrating that Aadhaar eKYC is the dominant identity-verification mechanism for Indian financial institutions. The critical enterprise problem is not adoption — it is fragmentation: each bank (Finacle, Temenos, Oracle FLEXCUBE) and each NBFC (Nucleus, Finflux, Mambu) builds its own Aadhaar eKYC integration in-house, separately, across their core banking system, CRM (Salesforce, Microsoft Dynamics), and Loan Origination System (LOS). When UIDAI updates its API specification, every bank must independently patch its bespoke code — creating compliance risk, delayed updates, and duplicated engineering effort across the industry. IBM's App Connect connector provides a single, UIDAI-compliant eKYC middleware layer that all these systems consume, so a UIDAI spec change triggers one IBM patch and all downstream systems are automatically compliant. Track A: customer bank holds AUA/KUA; IBM registers as Sub-AUA. Track B: IBM routes via IDfy/Signzy AUA for new NBFCs and fintechs — 2-week go-live.
+</div>
+
+<div class="connector-card">
+  <div class="card-header">
+    <h3>1 &mdash; Aadhaar eKYC — Bank &amp; NBFC Onboarding</h3>
+    <div class="card-meta">
+      <span class="p1">P1</span>
+      <span class="type-tag">Action &amp; Event</span>
+      <span class="badge badge-green">Existing ★</span>
+      <span class="badge badge-gray">BFSI &middot; Identity &middot; KYC &middot; Compliance</span>
+    </div>
+  </div>
+
+  <div class="use-cases">
+
+    <div class="use-case">
+      <div class="uc-title">UC1 &mdash; Consistent eKYC compliance across core banking systems</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">Banks run eKYC across 3–5 internal systems (core banking, CRM, LOS, digital channels) each with independently maintained UIDAI integrations. A UIDAI API version change forces simultaneous patching across all systems, creating a compliance window of 2–6 weeks where one system may be non-compliant. India has 200+ scheduled banks and 10,000+ NBFCs, all facing this same fragmentation problem. <span class="track-label track-a">Track A</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">Customer onboarding event in <strong>Finacle / Oracle FLEXCUBE</strong> &rarr; App Connect triggers <strong>Aadhaar eKYC</strong> OTP flow (customer's AUA credentials) &rarr; UIDAI returns verified demographic data &rarr; App Connect maps fields to <strong>Salesforce Financial Services Cloud</strong> CRM &rarr; verified record triggers account creation in <strong>LOS (Nucleus / Finflux)</strong> &rarr; App Connect logs consent artefact and UIDAI response hash to immutable audit store &rarr; APIC enforces Aadhaar masking before any field is written to downstream systems.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar eKYC ★</span><span class="cpill">Salesforce</span><span class="cpill">SAP / Finacle</span><span class="cpill">IBM APIC</span><span class="cpill">IBM MQ</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Eliminates per-system UIDAI integration maintenance — one IBM patch propagates to all consuming bank systems automatically, reducing compliance lag from weeks to hours. IBM positions as a compliance-maintained middleware layer across India's banking stack.</span></div>
+    </div>
+
+    <div class="use-case">
+      <div class="uc-title">UC2 &mdash; Digital account opening for NBFC and fintech (Track B brokered)</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">New-age NBFCs and fintechs do not qualify as Section 4 entities and cannot obtain AUA/KUA directly. They currently rely on KYC-aaS providers (IDfy, Signzy, Karza) independently, with no standardised integration layer — every NBFC writes custom code per KYC vendor, creating vendor lock-in and no fallback path. Over 9,700 NBFCs are registered with RBI, most without a standardised eKYC pipeline. <span class="track-label track-b">Track B</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">Loan application submitted in <strong>Finflux / Mambu LOS</strong> &rarr; App Connect triggers <strong>Aadhaar eKYC</strong> via IDfy/Signzy licensed API (customer's IDfy credentials injected via IBM Secrets Manager) &rarr; UIDAI demographic data returned via broker &rarr; App Connect applies PII masking and maps to credit model &rarr; CIBIL score pulled (customer credential pass-through) &rarr; combined result written to <strong>Salesforce</strong> or LOS &rarr; consent artefact and audit log stored immutably via <strong>IBM Cloud Object Storage</strong>.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar eKYC (via IDfy/Signzy) ★</span><span class="cpill">Salesforce</span><span class="cpill">IBM Secrets Manager</span><span class="cpill">IBM Cloud Object Storage</span><span class="cpill">DigiLocker</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Reduces NBFC eKYC integration from 4–8 weeks of custom development to a 2-week deployment; IBM manages the multi-vendor fallback (IDfy &rarr; Signzy) automatically, eliminating vendor dependency risk at scale.</span></div>
+    </div>
+
+    <div class="use-case">
+      <div class="uc-title">UC3 &mdash; Insurance eKYC at policy issuance (IRDAI VBIP compliance)</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">IRDAI mandates KYC completion before policy issuance under the VBIP (Video-Based Identification Process) framework. Life and general insurers currently complete eKYC via disparate integrations per channel (web, mobile, agent app) — each channel maintaining its own UIDAI integration. Policy lapse during the KYC step accounts for a measurable portion of application drop-off in digital-first channels. <span class="track-label track-a">Track A</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">Policy proposal submitted in <strong>Policy Admin System (LifeAsia / ALIS)</strong> &rarr; App Connect triggers <strong>Aadhaar eKYC</strong> OTP flow (insurer's AUA credentials) &rarr; UIDAI demographic data returned &rarr; App Connect maps to underwriting system &rarr; IRDAI-compliant consent artefact stored &rarr; eSign triggered via <strong>eMudhra ASP</strong> for proposal signature &rarr; signed proposal filed in <strong>IBM Content Manager / COS</strong> &rarr; policy number issued to CRM.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar eKYC ★</span><span class="cpill">eSign (eMudhra)</span><span class="cpill">IBM Content Manager</span><span class="cpill">Salesforce</span><span class="cpill">IBM APIC</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Reduces policy issuance cycle from 3–5 days (physical KYC) to same-session digital completion; IBM manages both eKYC and eSign as a combined compliant pipeline, reducing channel-specific integration duplication across insurer tech stacks.</span></div>
+    </div>
+
+    <div class="use-case">
+      <div class="uc-title">UC4 &mdash; Video KYC with Aadhaar face authentication for remote account opening</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">RBI guidelines permit Video KYC (V-CIP) with Aadhaar face authentication as a valid KYC method for account opening. Banks implementing V-CIP must integrate UIDAI Face Auth with their video KYC platform (Jio Haptik, IDfy V-CIP, or custom builds) — an integration that today requires bespoke API code per bank. UIDAI processed face authentication at scale since 2019, but enterprise middleware integration remains fragmented. <span class="track-label track-a">Track A</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">V-CIP session initiated in <strong>Video KYC platform</strong> &rarr; App Connect triggers <strong>Aadhaar Face Auth</strong> API (bank's AUA credentials) &rarr; UIDAI returns match confidence score &rarr; App Connect evaluates threshold and routes: pass &rarr; triggers account creation in <strong>Finacle</strong>; fail &rarr; routes to manual review queue in <strong>ServiceNow</strong> &rarr; consent log and session ID written to <strong>IBM MQ</strong> for audit retention.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar Face Auth ★</span><span class="cpill">ServiceNow</span><span class="cpill">IBM MQ</span><span class="cpill">SAP / Finacle</span><span class="cpill">IBM APIC</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Reduces V-CIP integration build from 6–10 weeks of custom UIDAI Face Auth code to a pre-built connector deployment; IBM provides the only enterprise-grade middleware layer that connects UIDAI Face Auth to core banking, CRM, and incident management systems in a single compliant flow.</span></div>
+    </div>
+
+  </div>
+
+  <div class="actions-section">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#57606a;margin-bottom:4px">Actions Required</div>
+    <table class="actions-table">
+      <thead><tr><th>Action</th><th>Owner</th></tr></thead>
+      <tbody>
+        <tr><td>Engage UIDAI to register IBM India as Sub-AUA under eligible bank customer (Circular 02/2025) for Track A pilots</td><td>Partnerships</td></tr>
+        <tr><td>Sign commercial ASP agreement with IDfy and Signzy for Track B brokered eKYC route</td><td>Partnerships</td></tr>
+        <tr><td>Complete CERT-In audit and FIPS-140 HSM review for Track A Sub-AUA eligibility</td><td>Engineering</td></tr>
+        <tr><td>Document purpose limitation, consent flow, and data retention policy per UIDAI onboarding checklist</td><td>Product Manager</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div><!-- /connector-card -->
+
+<hr />
+
+<!-- ============================================================
+     2 / Aadhaar Offline KYC (OKYC / OVSE)
+     ============================================================ -->
+<div class="ci-box">
+  <strong>2 / Aadhaar Offline KYC (OKYC / OVSE) — Integration value:</strong>
+  UIDAI's Offline KYC (OKYC) via the Offline Verification Service Entity (OVSE) registration is open to any Indian company — IBM India Pvt. Ltd. qualifies directly with no AUA/KUA dependency and no HSM or CERT-In audit requirement. Under OKYC, the resident downloads their Aadhaar XML (digitally signed by UIDAI), shares it with the verifying party, and IBM verifies the UIDAI digital signature — no real-time biometric API call, no Aadhaar number transmitted. This covers approximately 65% of enterprise identity verification needs in HR onboarding, gig worker verification, vendor registration, and educational institution workflows. Enterprises hiring tens of thousands of employees annually currently collect physical Aadhaar copies, scan them manually, and email them through HR systems — creating fraud risk (tampered documents), 7–14 day onboarding lag, and no real-time UIDAI cross-check. IBM can hold the OVSE registration directly and begin delivering this use case within 4–6 weeks of registration.
+</div>
+
+<div class="connector-card">
+  <div class="card-header">
+    <h3>2 &mdash; Aadhaar Offline KYC (OKYC / OVSE) — Enterprise HR &amp; Gig Platforms</h3>
+    <div class="card-meta">
+      <span class="p1">P1</span>
+      <span class="type-tag">Action</span>
+      <span class="badge badge-green">Existing ★</span>
+      <span class="badge badge-gray">HR &middot; Gig Economy &middot; Vendor Onboarding &middot; Compliance</span>
+    </div>
+  </div>
+
+  <div class="use-cases">
+
+    <div class="use-case">
+      <div class="uc-title">UC5 &mdash; Bulk employee identity verification at onboarding (IBM holds OVSE)</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">Large Indian enterprises — IT services firms, banks, and manufacturing companies — hire 50,000–200,000 employees annually. HR teams manually collect physical Aadhaar copies, scan, and email them; no real-time UIDAI cross-check means tampered documents pass undetected. IT system access provisioning waits 7–14 days for manual verification to complete. From June 2026, the Labour Ministry requires gig and platform workers to be registered on eShram, adding a compliance verification layer that manual processes cannot scale to meet. <span class="track-label track-a">IBM OVSE (direct)</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">New joiner record created in <strong>SAP HCM / SuccessFactors</strong> &rarr; App Connect triggers OKYC consent request to employee mobile &rarr; employee downloads and shares <strong>Aadhaar Offline XML</strong> &rarr; App Connect (IBM OVSE registration) verifies UIDAI digital signature &rarr; identity fields mapped to HR profile in <strong>SAP HCM</strong> &rarr; verified record triggers IT access provisioning workflow in <strong>ServiceNow</strong> &rarr; eShram-compliant verification log stored in <strong>IBM MQ</strong>.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar OKYC (OVSE) ★</span><span class="cpill">SAP HCM / SuccessFactors</span><span class="cpill">ServiceNow</span><span class="cpill">IBM MQ</span><span class="cpill">DigiLocker</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Reduces identity verification lag from 7–14 days to same-day; eliminates physical document fraud risk; IBM holds the OVSE registration directly — no customer licence required, enabling the fastest path to enterprise value among all Aadhaar connector modes.</span></div>
+    </div>
+
+    <div class="use-case">
+      <div class="uc-title">UC6 &mdash; Gig worker identity and eShram registration verification</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">India's gig economy platforms (Swiggy, Zomato, Urban Company, Porter) onboard thousands of workers weekly. Traditional police verification and manual document checks take 7–15 days per candidate, creating a bottleneck that delays driver and delivery partner activation. From June 2026, the Labour Ministry deadline requires all gig workers to be registered on the eShram portal — platforms without a digital verification pipeline face direct compliance liability and potential penalties. <span class="track-label track-a">IBM OVSE (direct)</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">New worker registration event in <strong>Gig Platform Driver Management System</strong> &rarr; App Connect triggers OKYC consent request &rarr; worker shares <strong>Aadhaar Offline XML</strong> &rarr; App Connect verifies UIDAI signature (IBM OVSE) &rarr; Driving Licence pulled from <strong>DigiLocker</strong> for vehicle operator validation &rarr; verified identity mapped to driver profile &rarr; IBM APIC rate-limits and logs every verification call for <strong>eShram compliance reporting</strong> &rarr; activation status updated in driver management system.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar OKYC (OVSE) ★</span><span class="cpill">DigiLocker</span><span class="cpill">IBM APIC</span><span class="cpill">IBM MQ</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Reduces worker activation from 7–15 days to under 24 hours; provides built-in eShram compliance reporting via IBM APIC audit logs — giving platforms a defensible compliance record against Labour Ministry scrutiny.</span></div>
+    </div>
+
+    <div class="use-case">
+      <div class="uc-title">UC7 &mdash; Vendor and supplier identity verification at procurement onboarding</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">Enterprise procurement teams onboard thousands of vendors annually through SAP Ariba or Oracle Procurement. Manual verification of authorised signatory identity is done via physical Aadhaar copies — vulnerable to forgery and creating 2–4 weeks of verification lag before a vendor is activated in the procurement master. Fraudulent vendor registrations are a documented source of procurement leakage and audit findings. <span class="track-label track-a">IBM OVSE (direct)</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">Vendor onboarding event in <strong>SAP Ariba</strong> &rarr; App Connect triggers OKYC consent request to authorised signatory &rarr; signatory shares <strong>Aadhaar Offline XML</strong> &rarr; App Connect verifies UIDAI signature &rarr; GST and MCA certificate pulled from <strong>DigiLocker</strong> &rarr; combined verification result written to <strong>SAP Ariba vendor master</strong> &rarr; verified vendors auto-activated; unverified routed to manual review queue.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar OKYC (OVSE) ★</span><span class="cpill">DigiLocker</span><span class="cpill">SAP Ariba</span><span class="cpill">IBM APIC</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Reduces vendor activation from 2–4 weeks to same-day; eliminates manual document fraud risk in procurement; IBM earns value as the only middleware connecting Aadhaar OKYC, DigiLocker, and SAP Ariba in a single, audit-compliant flow.</span></div>
+    </div>
+
+    <div class="use-case">
+      <div class="uc-title">UC8 &mdash; Beneficiary deduplication across government welfare schemes</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">Duplicate and ghost beneficiaries across central and state welfare schemes drain public funds — CAG audits have repeatedly flagged leakage running to thousands of crores annually. Scheme databases are siloed across departments with no cross-referencing mechanism. Aadhaar tokenization (hashed VID tokens, not plain-text Aadhaar numbers) is the only viable deduplication key at India's population scale. <span class="track-label track-a">Track A (Govt entity)</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">Beneficiary record from <strong>Scheme Management System (Department A)</strong> &rarr; App Connect compares hashed Aadhaar VID token against <strong>Scheme Database (Department B)</strong> via IBM MQ — no plain-text Aadhaar stored in IBM layer &rarr; deduplication flag generated &rarr; routed to <strong>DBT Mission Beneficiary Management System</strong> &rarr; audit log of match/mismatch stored immutably.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar OKYC / VID Token ★</span><span class="cpill">IBM MQ</span><span class="cpill">IBM Event Streams</span><span class="cpill">IBM APIC</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Enables cross-department deduplication without sharing raw Aadhaar numbers — privacy-safe via VID tokens; IBM positions as the neutral, compliant middleware layer between siloed government systems that cannot share data directly.</span></div>
+    </div>
+
+  </div>
+
+  <div class="actions-section">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#57606a;margin-bottom:4px">Actions Required</div>
+    <table class="actions-table">
+      <thead><tr><th>Action</th><th>Owner</th></tr></thead>
+      <tbody>
+        <tr><td>File IBM India OVSE registration at uidai.gov.in — submit CIN, GSTIN, IT Act 2000 privacy declaration</td><td>Legal</td></tr>
+        <tr><td>Build and certify Aadhaar Offline XML signature verification module within App Connect BAR files</td><td>Connector Engineering</td></tr>
+        <tr><td>Document data fields used, retention policy, and purpose limitation per UIDAI OVSE T&amp;C</td><td>Product Manager</td></tr>
+        <tr><td>Identify 2–3 enterprise HR customers for OVSE pilot (target: large IT services firm and one gig platform)</td><td>Partnerships</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div><!-- /connector-card -->
+
+<hr />
+
+<!-- ============================================================
+     3 / Aadhaar OTP Authentication — Government Welfare & DBT
+     ============================================================ -->
+<div class="ci-box">
+  <strong>3 / Aadhaar OTP Authentication — Integration value:</strong>
+  Aadhaar OTP Authentication is the foundational identity step in every government Direct Benefit Transfer (DBT) workflow. India's DBT Mission manages over 300 schemes disbursing ₹6+ lakh crore annually, all requiring beneficiary identity verification before benefit release. State governments, PSUs, and welfare-administering departments operate legacy systems (mainframe, Oracle E-Business Suite, custom portals) that each independently integrate UIDAI OTP Auth — creating fragmented, version-mismatched authentication pipelines. IBM's App Connect connector provides a single, versioned OTP authentication middleware layer that all these systems can consume, with APIC enforcing Aadhaar masking, consent capture, and per-call audit logging required for CAG and CERT-In compliance. This use case targets government departments and PSUs that qualify as Section 4 entities or hold existing AUA registrations (Track A).
+</div>
+
+<div class="connector-card">
+  <div class="card-header">
+    <h3>3 &mdash; Aadhaar OTP Authentication — Government Welfare &amp; DBT</h3>
+    <div class="card-meta">
+      <span class="p1">P1</span>
+      <span class="type-tag">Action &amp; Event</span>
+      <span class="badge badge-green">Existing ★</span>
+      <span class="badge badge-gray">Government &middot; DBT &middot; Welfare &middot; Identity</span>
+    </div>
+  </div>
+
+  <div class="use-cases">
+
+    <div class="use-case">
+      <div class="uc-title">UC9 &mdash; Government Direct Benefit Transfer (DBT) with Aadhaar authentication</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">India's DBT Mission disburses benefits across 300+ schemes — PMKISAN, MGNREGS, PM Awas Yojana, scholarships — to over 80 crore beneficiaries. Every disbursement requires Aadhaar OTP authentication before benefit release, but state and central departments build these authentication steps independently in their own scheme portals, with no shared middleware. Specification drift between department-maintained integrations and UIDAI's live API creates authentication failures that delay disbursement and create grievance backlogs. <span class="track-label track-a">Track A (Govt AUA)</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">Benefit disbursement event in <strong>Scheme Management Portal</strong> &rarr; App Connect triggers <strong>Aadhaar OTP Auth</strong> (department's AUA credentials) &rarr; beneficiary completes OTP on registered mobile &rarr; UIDAI authentication response returned &rarr; App Connect maps result to eligibility check in <strong>myScheme eligibility API</strong> &rarr; NACH bulk disbursement instruction sent via <strong>NPCI / Bank connector</strong> &rarr; AePS cash-out confirmation (rural beneficiaries) logged in <strong>IBM MQ</strong> for DBT Mission audit.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar OTP Auth ★</span><span class="cpill">IBM MQ</span><span class="cpill">IBM APIC</span><span class="cpill">NPCI / NACH</span><span class="cpill">API Setu (myScheme)</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Reduces authentication-related disbursement failures and grievance backlog; IBM provides the only enterprise middleware layer connecting UIDAI OTP Auth, myScheme, and NACH disbursement in a single auditable flow — positioning IBM as critical infrastructure for India's digital welfare delivery system.</span></div>
+    </div>
+
+    <div class="use-case">
+      <div class="uc-title">UC10 &mdash; Scholarship disbursement with Aadhaar auth and certificate verification</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">Government scholarship portals (NSP, state scholarship portals) regularly detect forged mark sheets and fake income certificates during manual verification cycles. Manual verification by education department officers takes 3–6 weeks, causing genuine students to miss disbursement windows during application surges (post-exam result declarations). The National Scholarship Portal disburses ₹3,000+ crore annually across 120+ schemes — scaling manual verification is not feasible. <span class="track-label track-a">Track A (Govt AUA)</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">Scholarship application submitted on <strong>NSP / State Scholarship Portal</strong> &rarr; App Connect triggers <strong>Aadhaar OTP Auth</strong> to verify applicant identity &rarr; DigiLocker pulls CBSE/state board mark sheet directly from issuing authority &rarr; income certificate pulled from <strong>DigiLocker</strong> &rarr; App Connect rule engine checks eligibility (marks threshold, income cap) &rarr; auto-approve or route to manual review &rarr; NACH disbursement instruction sent on approval.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar OTP Auth ★</span><span class="cpill">DigiLocker</span><span class="cpill">NPCI / NACH</span><span class="cpill">IBM APIC</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Reduces scholarship verification from 3–6 weeks to same-day for auto-approvable cases; eliminates forged document risk by sourcing documents directly from DigiLocker (issuing authority-signed); IBM connects three government APIs in one flow where no pre-built integration exists today.</span></div>
+    </div>
+
+    <div class="use-case">
+      <div class="uc-title">UC11 &mdash; AePS cash withdrawal authorisation for rural last-mile disbursement</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">AePS (Aadhaar-enabled Payment System) enables cash withdrawal via biometric authentication at Business Correspondent (BC) points for rural beneficiaries without smartphones or internet access. Banks and BCs connecting to AePS via their own middleware face the same fragmentation and spec-drift problems as eKYC — independently maintained UIDAI biometric auth integrations per BC network, with no shared compliance layer. NPCI processes over 100 million AePS transactions monthly. <span class="track-label track-a">Track A (Bank AUA)</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">BC terminal initiates withdrawal request &rarr; App Connect triggers <strong>Aadhaar Biometric Auth</strong> (bank AUA credentials) via BC device &rarr; UIDAI authentication returned &rarr; App Connect routes to <strong>Bank Core System</strong> for account debit &rarr; NPCI AePS settlement confirmed &rarr; transaction log and consent artefact stored in <strong>IBM MQ</strong> for RBI audit compliance.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar Biometric Auth ★</span><span class="cpill">IBM MQ</span><span class="cpill">IBM APIC</span><span class="cpill">SAP / Core Banking</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Provides a single, bank-agnostic Aadhaar biometric auth middleware layer for BC networks — enabling any bank's BC to connect without building custom UIDAI integration; IBM earns position as infrastructure for India's rural financial inclusion stack.</span></div>
+    </div>
+
+    <div class="use-case">
+      <div class="uc-title">UC12 &mdash; Pension and provident fund identity refresh for EPFO members</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">EPFO requires annual life certificate (Jeevan Pramaan) submission from ~65 lakh pensioners — traditionally requiring a physical visit to a bank branch or Common Service Centre. UIDAI's Aadhaar OTP/biometric authentication via the Jeevan Pramaan app enables digital submission, but integration between EPFO's legacy systems and UIDAI authentication is manually managed with no enterprise integration platform. Delayed life certificate submissions freeze pension disbursement for hundreds of thousands of pensioners annually. <span class="track-label track-a">Track A (EPFO AUA)</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">Annual life certificate trigger from <strong>EPFO Pension System</strong> &rarr; App Connect sends OTP authentication request to pensioner &rarr; pensioner completes <strong>Aadhaar OTP Auth</strong> &rarr; Jeevan Pramaan certificate generated &rarr; App Connect writes certificate confirmation to <strong>EPFO system</strong> &rarr; pension disbursement instruction released via <strong>NACH</strong> &rarr; audit log stored for CAG compliance.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar OTP Auth ★</span><span class="cpill">IBM MQ</span><span class="cpill">NPCI / NACH</span><span class="cpill">API Setu (EPFO UAN)</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Eliminates the branch-visit requirement for 65 lakh pensioners; reduces frozen-pension incidents caused by delayed life certificate submission; IBM connects UIDAI, EPFO, and NACH in a single compliant pipeline that does not exist as a pre-built integration today.</span></div>
+    </div>
+
+  </div>
+
+  <div class="actions-section">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#57606a;margin-bottom:4px">Actions Required</div>
+    <table class="actions-table">
+      <thead><tr><th>Action</th><th>Owner</th></tr></thead>
+      <tbody>
+        <tr><td>Identify government department design partner (target: state DBT programme or EPFO) for Track A OTP Auth pilot</td><td>Partnerships</td></tr>
+        <tr><td>Draft purpose-limitation and data-retention declaration for government welfare use cases per UIDAI onboarding checklist</td><td>Product Manager</td></tr>
+        <tr><td>Build NACH disbursement connector integration to connect OTP Auth result to NPCI payment instruction</td><td>Connector Engineering</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div><!-- /connector-card -->
+
+<hr />
+
+<!-- ============================================================
+     4 / Aadhaar eSign — Paperless Loan & Policy Execution
+     ============================================================ -->
+<div class="ci-box">
+  <strong>4 / Aadhaar eSign — Integration value:</strong>
+  Aadhaar OTP-based eSign under the IT Act Rule 3(5) carries the same legal standing as a physical wet signature and is accepted by IRDAI (insurance policy issuance), NHB (home loan agreements), and SEBI (investment mandates). IBM can act as an Application Service Provider (ASP) through a commercial agreement with eMudhra or NSDL — no CCA government licence is required for IBM in the ASP role, and the agreement can be operational within 2–3 weeks. The integration challenge is connecting the eSign step into the surrounding enterprise workflow: loan origination system, policy admin system, HR system, or legal document management system. IBM's App Connect connector is the only pre-built middleware that connects eMudhra/NSDL eSign APIs to SAP, Salesforce, Finacle, ServiceNow, and IBM Content Manager in a single configurable flow — eliminating the need for every enterprise to build custom eSign integration. IBM holds this role as ASP, not as an AUA/KUA — this is a fully independent credential track.
+</div>
+
+<div class="connector-card">
+  <div class="card-header">
+    <h3>4 &mdash; Aadhaar eSign — Paperless Loan &amp; Policy Execution</h3>
+    <div class="card-meta">
+      <span class="p1">P1</span>
+      <span class="type-tag">Action</span>
+      <span class="badge badge-green">Existing ★</span>
+      <span class="badge badge-gray">BFSI &middot; Legal &middot; Insurance &middot; HR</span>
+    </div>
+  </div>
+
+  <div class="use-cases">
+
+    <div class="use-case">
+      <div class="uc-title">UC13 &mdash; Paperless loan disbursal agreement with Aadhaar eSign</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">Physical loan agreement signing adds 2–4 days post-approval — digital-first lenders lose a measurable share of approved borrowers during this final step as competing offers arrive. Scanned wet signatures are legally inferior to Aadhaar eSign under the IT Act; lenders accepting scanned copies face enforceability risk. Over 9,700 NBFCs and 50+ digital lending platforms in India all face this same post-approval drop-off problem. <span class="track-label track-a">IBM ASP (eMudhra)</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">Loan approval event in <strong>LOS (Nucleus / Finflux)</strong> &rarr; App Connect generates loan agreement PDF &rarr; triggers <strong>Aadhaar eSign</strong> flow via eMudhra ASP (IBM ASP credentials) &rarr; borrower completes OTP on registered mobile &rarr; eMudhra returns Aadhaar OTP-signed PDF &rarr; signed agreement stored in <strong>IBM Content Manager / COS</strong> with immutable timestamp &rarr; disbursal instruction released to <strong>NACH / UPI</strong> &rarr; Salesforce CRM updated with loan status.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar eSign (eMudhra ASP) ★</span><span class="cpill">IBM Content Manager</span><span class="cpill">Salesforce</span><span class="cpill">NPCI / NACH</span><span class="cpill">SAP / LOS</span></div></span></div>
+      <div class="uc-row"><span class="uc-value">Reduces post-approval disbursal cycle from 2–4 days to same-session; IBM manages the eMudhra ASP integration once — all lenders on the Connectivity Pack consume the same connector, eliminating duplicated eSign integration across the industry.</span><span class="uc-label">Business Value</span></div>
+    </div>
+
+    <div class="use-case">
+      <div class="uc-title">UC14 &mdash; Insurance policy issuance with Aadhaar eSign (IRDAI VBIP)</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">IRDAI mandates a signed proposal form for all insurance policies — physical signature collection is a primary cause of policy lapse between approval and issuance, as applicants lose interest or switch providers during the wait. eSign is accepted under IRDAI's VBIP framework but each insurer must independently integrate with an ESP, resulting in duplicated effort across 24 life insurers and 35 general insurers in India. <span class="track-label track-a">IBM ASP (eMudhra)</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">Policy approval event in <strong>Policy Admin System (LifeAsia / ALIS)</strong> &rarr; App Connect generates proposal form &rarr; triggers <strong>Aadhaar eSign</strong> (IBM eMudhra ASP) &rarr; proposer completes OTP &rarr; signed proposal auto-filed in <strong>Policy Admin System</strong> &rarr; IRDAI-compliant audit trail with signature timestamp stored in <strong>IBM Content Manager</strong> &rarr; policy number issued and synced to <strong>Salesforce</strong> CRM.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar eSign (eMudhra ASP) ★</span><span class="cpill">IBM Content Manager</span><span class="cpill">Salesforce</span><span class="cpill">IBM APIC</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Eliminates policy lapse at signing step; IBM manages the ESP integration once — all insurers on the Connectivity Pack consume the same connector, eliminating duplicated eSign integration effort across India's insurance sector.</span></div>
+    </div>
+
+    <div class="use-case">
+      <div class="uc-title">UC15 &mdash; Employee offer letter and NDA signing at scale</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">Large IT services firms issue tens of thousands of offer letters and NDAs annually. Wet-signature collection via courier or in-person signing takes 5–7 days, creates version-control risk (wrong document version signed), and the gap between offer issuance and countersigned return is a window for competing offers to succeed — attrition between offer and joining is a documented problem in India's IT sector. <span class="track-label track-a">IBM ASP (eMudhra)</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">Offer letter generation event in <strong>SAP HCM / SuccessFactors</strong> &rarr; App Connect triggers <strong>Aadhaar eSign</strong> (IBM eMudhra ASP) for offer letter and NDA &rarr; candidate completes OTP &rarr; signed documents returned and stored in <strong>IBM Content Manager</strong> &rarr; signing completion event triggers background verification initiation in <strong>ServiceNow</strong> &rarr; HR profile updated with joining confirmation status.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar eSign (eMudhra ASP) ★</span><span class="cpill">SAP HCM / SuccessFactors</span><span class="cpill">ServiceNow</span><span class="cpill">IBM Content Manager</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Reduces offer-to-signed cycle from 5–7 days to same-day; eliminates version-control risk; IBM connects eSign to SAP HCM and ServiceNow in a single pre-built flow that no other middleware platform offers today for the Indian market.</span></div>
+    </div>
+
+    <div class="use-case">
+      <div class="uc-title">UC16 &mdash; Loan agreement and property registration eSign for home loan workflows</div>
+      <div class="uc-row"><span class="uc-label">Business Need</span><span class="uc-value">Home loan processing requires multiple signed documents — loan agreement, mortgage deed, insurance policy, and property valuation report. Physical signing across these documents adds 7–14 days to the home loan disbursal cycle. NHB guidelines accept Aadhaar eSign for home loan agreements; however, no pre-built integration connects home loan origination systems (Lending Kart, Mpower, HDFC internal LOS) to Aadhaar eSign and property document management in a single workflow. <span class="track-label track-a">IBM ASP (eMudhra)</span></span></div>
+      <div class="uc-row"><span class="uc-label">Flow</span><span class="uc-value">Home loan approval in <strong>Home Loan LOS</strong> &rarr; App Connect generates all required documents (loan agreement, insurance declaration, mortgage deed) &rarr; triggers <strong>Aadhaar eSign</strong> (IBM eMudhra ASP) for each document &rarr; borrower completes single OTP session covering all documents &rarr; all signed documents stored in <strong>IBM Content Manager</strong> with CERSAI-compliant audit trail &rarr; disbursal instruction released to <strong>NACH</strong> &rarr; property registry notification sent.</span></div>
+      <div class="uc-row"><span class="uc-label">Connectors</span><span class="uc-value"><div class="connector-pills"><span class="cpill-pro">Aadhaar eSign (eMudhra ASP) ★</span><span class="cpill">IBM Content Manager</span><span class="cpill">NPCI / NACH</span><span class="cpill">IBM APIC</span></div></span></div>
+      <div class="uc-row"><span class="uc-label">Business Value</span><span class="uc-value">Reduces home loan disbursal cycle by 7–14 days; IBM's multi-document eSign orchestration (single OTP session covering all agreements) is a unique capability not available from any existing LOS-to-eSign integration in the Indian market.</span></div>
+    </div>
+
+  </div>
+
+  <div class="actions-section">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#57606a;margin-bottom:4px">Actions Required</div>
+    <table class="actions-table">
+      <thead><tr><th>Action</th><th>Owner</th></tr></thead>
+      <tbody>
+        <tr><td>Sign eMudhra ASP reseller agreement — IBM India as ASP; sandbox API keys available within days of signing</td><td>Partnerships</td></tr>
+        <tr><td>Build and certify eSign connector BAR files for App Connect with eMudhra and NSDL ESP support</td><td>Connector Engineering</td></tr>
+        <tr><td>Identify 2 NBFC / insurance design partners for eSign connector pilot (target: digital lender + life insurer)</td><td>Partnerships</td></tr>
+        <tr><td>Document consent artefact format, signature timestamp storage, and IRDAI/NHB compliance requirements</td><td>Product Manager</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div><!-- /connector-card -->
+
+</div><!-- /track-section -->
+
+<hr />
+
+<div class="footer">
+  Made with IBM Bob &nbsp;&middot;&nbsp; UIDAI Aadhaar Connector Use Cases &nbsp;&middot;&nbsp; Market-validated enterprise integration patterns
+</div>
+
+</div><!-- /page -->
+</body>
+</html>
